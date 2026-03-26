@@ -21,21 +21,21 @@ under the Apache License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 OR CONDITIONS OF ANY KIND, either express or implied. See the Apache License for
 the specific language governing permissions and limitations under the License.
 
-  Copyright (c) 2026 Audiokinetic Inc.
+  Copyright (c) 2025 Audiokinetic Inc.
 *******************************************************************************/
 
-#include "WP_CeSoundTracePlugin.h"
-#include "../SoundEnginePlugin/WP_CeSoundTraceFXFactory.h"
+#include "WP_CeSoundFIRTraceConv_24Plugin.h"
+#include "../SoundEnginePlugin/WP_CeSoundFIRTraceConv_24FXFactory.h"
 
-WP_CeSoundTracePlugin::WP_CeSoundTracePlugin()
+WP_CeSoundFIRTraceConv_24Plugin::WP_CeSoundFIRTraceConv_24Plugin()
 {
 }
 
-WP_CeSoundTracePlugin::~WP_CeSoundTracePlugin()
+WP_CeSoundFIRTraceConv_24Plugin::~WP_CeSoundFIRTraceConv_24Plugin()
 {
 }
 
-bool WP_CeSoundTracePlugin::GetBankParameters(const GUID & in_guidPlatform, AK::Wwise::Plugin::DataWriter& in_dataWriter) const
+bool WP_CeSoundFIRTraceConv_24Plugin::GetBankParameters(const GUID & in_guidPlatform, AK::Wwise::Plugin::DataWriter& in_dataWriter) const
 {
     // Write bank data here
     in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "Placeholder"));
@@ -43,13 +43,13 @@ bool WP_CeSoundTracePlugin::GetBankParameters(const GUID & in_guidPlatform, AK::
     return true;
 }
 
-AK_DEFINE_PLUGIN_CONTAINER(WP_CeSoundTrace);											// Create a PluginContainer structure that contains the info for our plugin
-AK_EXPORT_PLUGIN_CONTAINER(WP_CeSoundTrace);											// This is a DLL, we want to have a standardized name
+AK_DEFINE_PLUGIN_CONTAINER(WP_CeSoundFIRTraceConv_24);											// Create a PluginContainer structure that contains the info for our plugin
+AK_EXPORT_PLUGIN_CONTAINER(WP_CeSoundFIRTraceConv_24);											// This is a DLL, we want to have a standardized name
 AK_ADD_PLUGIN_CLASS_TO_CONTAINER(                                             // Add our CLI class to the PluginContainer
-    WP_CeSoundTrace,        // Name of the plug-in container for this shared library
-    WP_CeSoundTracePlugin,  // Authoring plug-in class to add to the plug-in container
-    WP_CeSoundTraceFX       // Corresponding Sound Engine plug-in class
+    WP_CeSoundFIRTraceConv_24,        // Name of the plug-in container for this shared library
+    WP_CeSoundFIRTraceConv_24Plugin,  // Authoring plug-in class to add to the plug-in container
+    WP_CeSoundFIRTraceConv_24FX       // Corresponding Sound Engine plug-in class
 );
 DEFINE_PLUGIN_REGISTER_HOOK
 
-//DEFINE_PLUGIN_ASSERT_HOOK;							// Placeholder assert hook for Wwise plug-ins using AKASSERT (cassert used by default)
+DEFINEDUMMYASSERTHOOK;							// Placeholder assert hook for Wwise plug-ins using AKASSERT (cassert used by default)
