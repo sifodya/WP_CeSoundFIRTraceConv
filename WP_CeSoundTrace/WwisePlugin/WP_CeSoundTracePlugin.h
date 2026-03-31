@@ -31,7 +31,8 @@ the specific language governing permissions and limitations under the License.
 /// See https://www.audiokinetic.com/library/edge/?source=SDK&id=plugin__dll.html
 /// for the documentation about Authoring plug-ins
 class WP_CeSoundTracePlugin final
-    : public AK::Wwise::Plugin::AudioPlugin
+	: public AK::Wwise::Plugin::PluginMFCWindows<>
+    ,public AK::Wwise::Plugin::GUIWindows
 {
 public:
     WP_CeSoundTracePlugin();

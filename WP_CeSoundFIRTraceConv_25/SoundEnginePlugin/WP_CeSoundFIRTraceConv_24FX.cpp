@@ -26,7 +26,6 @@ the specific language governing permissions and limitations under the License.
 
 #include "WP_CeSoundFIRTraceConv_24FX.h"
 #include "../WP_CeSoundFIRTraceConv_24Config.h"
-
 #include <AK/AkWwiseSDKVersion.h>
 
 AK::IAkPlugin* CreateWP_CeSoundFIRTraceConv_24FX(AK::IAkPluginMemAlloc* in_pAllocator)
@@ -83,6 +82,8 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::GetPluginInfo(AkPluginInfo& out_rPluginInf
 
 void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in_ulnOffset, AkAudioBuffer* out_pBuffer)
 {
+    __debugbreak();
+
     void* gameData = nullptr;
     AkUInt32 dataSize{ 0 };
     m_pContext->GetPluginCustomGameData(gameData, dataSize);
