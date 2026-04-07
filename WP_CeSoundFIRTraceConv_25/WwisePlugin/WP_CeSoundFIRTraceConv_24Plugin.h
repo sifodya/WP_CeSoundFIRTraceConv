@@ -42,25 +42,6 @@ public:
     /// Because these can be changed at run-time, the parameter block should stay relatively small.
     // Larger data should be put in the Data Block.
     bool GetBankParameters(const GUID & in_guidPlatform, AK::Wwise::Plugin::DataWriter& in_dataWriter) const override;
-
-    
 };
 
 AK_DECLARE_PLUGIN_CONTAINER(WP_CeSoundFIRTraceConv_24);	// Exposes our PluginContainer structure that contains the info for our plugin
-
-class GUI final
-    : public AK::Wwise::Plugin::PluginMFCWindows<>,
-    public AK::Wwise::Plugin::GUIWindows
-{
-    public:
-    GUI();
-  
-    HINSTANCE GetResourceHandle() const override;
-    bool GetDialog(
-        AK::Wwise::Plugin::eDialog in_eDialog,
-        UINT& out_uiDialogID,
-        AK::Wwise::Plugin::PopulateTableItem*& out_pTable
-    ) const override;
-    //bool WindowProc(eDialog in_eDialog, HWND in_hWnd, uint32_t in_message, WPARAM in_wParam, LPARAM in_lParam, LRESULT& out_lResult) override;
-	//bool Help(HWND in_hWnd, eDialog in_eDialog, const char* in_szLanguageCode) const override;
-};

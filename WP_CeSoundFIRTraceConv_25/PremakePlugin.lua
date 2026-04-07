@@ -98,6 +98,7 @@ Plugin.authoring.files =
     "**.c",
     "WP_CeSoundFIRTraceConv_24.def",
     "WP_CeSoundFIRTraceConv_24.xml",
+    "resource.h",
     "**.rc",
 }
 Plugin.authoring.excludes =

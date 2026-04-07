@@ -49,6 +49,8 @@ WP_CeSoundFIRTraceConv_24FX::WP_CeSoundFIRTraceConv_24FX()
 
 WP_CeSoundFIRTraceConv_24FX::~WP_CeSoundFIRTraceConv_24FX()
 {
+    gameData = nullptr;
+    delete gameData;
 }
 
 AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator, AK::IAkEffectPluginContext* in_pContext, AK::IAkPluginParam* in_pParams, AkAudioFormat& in_rFormat)
@@ -82,9 +84,6 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::GetPluginInfo(AkPluginInfo& out_rPluginInf
 
 void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in_ulnOffset, AkAudioBuffer* out_pBuffer)
 {
-    __debugbreak();
-
-    void* gameData = nullptr;
     AkUInt32 dataSize{ 0 };
     m_pContext->GetPluginCustomGameData(gameData, dataSize);
     if (gameData != nullptr)
@@ -95,71 +94,64 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
             dataVersion = s_gameData->version;
             FilterIsUpdated(s_gameData->impulses);
         }
+
+        if(m_pContext->CanPostMonitorData())
+        {
+			CsVector nonZeroSamples;
+            for (CsVector impulse : s_gameData->impulses)
+            {
+                for (float sample : impulse)
+                {
+                    if(sample != 0.0f)
+                    {
+                        nonZeroSamples.push_back(sample);
+					}
+                }
+			}
+			m_pContext->PostMonitorData(&nonZeroSamples, sizeof(nonZeroSamples));
+        }
     }
+
+    //TODO bypass when filter is empty
+
     const AkUInt32 uNumChannels = in_pBuffer->NumChannels();
-    AkUInt32 frames = in_pBuffer->uValidFrames;
-    bufferSize = in_pBuffer->uValidFrames;
 
     AkUInt16 uFramesConsumed;
     AkUInt16 uFramesProduced;
-
-    for (AkUInt32 ch = 0; ch < uNumChannels; ++ch)
+    for (AkUInt32 i = 0; i < uNumChannels; ++i)
     {
-        AkReal32* in = (AkReal32*)in_pBuffer->GetChannel(ch) + in_ulnOffset;
-        AkReal32* out = (AkReal32*)out_pBuffer->GetChannel(ch) + in_ulnOffset;
+        AkReal32* AK_RESTRICT pInBuf = (AkReal32 * AK_RESTRICT)in_pBuffer->GetChannel(i) + in_ulnOffset;
+        AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(i) + out_pBuffer->uValidFrames;
 
-        // Copy input chunk into your DSP container
-        CsVector currentBuffer(frames);
-        for (AkUInt32 n = 0; n < frames; ++n)
+        uFramesConsumed = 0;
+        uFramesProduced = 0;
+        while (uFramesConsumed < in_pBuffer->uValidFrames
+            && uFramesProduced < out_pBuffer->MaxFrames())
         {
-            currentBuffer[n] = in[n];
-        }
-
-        // Process entire chunk at once
-        CsVector convolutedBuffer = UPOLS(&currentBuffer);
-
-        // Write result back
-        for (AkUInt32 n = 0; n < frames; ++n)
-        {
-            out[n] = convolutedBuffer[n];
+            
+            while (uFramesConsumed < bufferSize)
+            {
+				//TODO safety check pInBuf is not out of bounds
+                UpolsInput.push_back(*pInBuf++);
+			    ++uFramesConsumed;
+            }
+			CsVector output = UPOLS(&UpolsInput);
+            while (uFramesProduced < out_pBuffer->MaxFrames())
+            {
+                *pOutBuf++ = output[0];
+                output.erase(output.begin());
+                ++uFramesProduced;
+			}
+            output.clear();
+			UpolsInput.clear();
+            // Execute DSP that consumes input and produces output at different rate here
+            //*pOutBuf++ = *pInBuf++;
+            
         }
     }
 
-    /*for (AkUInt32 i = 0; i < uNumChannels; ++i)
-    {
-        CsVector currentBuffer(in_pBuffer->uValidFrames, 0.0f);
-        for (int numSamples{ 0 }; numSamples < in_pBuffer->uValidFrames; numSamples++)
-        {
-            AkReal32* in = (AkReal32*)in_pBuffer->GetChannel(i) + in_ulnOffset;
-            currentBuffer[numSamples] = in[numSamples];
-        }
-        CsVector convolutedBuffer = UPOLS(&currentBuffer);
-        for (int numOfFrames{ 0 }; numOfFrames < out_pBuffer->uValidFrames; numOfFrames++)
-        {
-            AkReal32* out = (AkReal32*)out_pBuffer->GetChannel(i) + in_ulnOffset;
-            out[numOfFrames] = convolutedBuffer[numOfFrames];
-        }*/
-        //============================================================================================================================
-        //AkReal32* AK_RESTRICT pInBuf = (AkReal32* AK_RESTRICT)in_pBuffer->GetChannel(i) + in_ulnOffset;
-        //AkReal32* AK_RESTRICT pOutBuf = (AkReal32* AK_RESTRICT)out_pBuffer->GetChannel(i) +  out_pBuffer->uValidFrames;
-
-        //uFramesConsumed = 0;
-        //uFramesProduced = 0;
-        //while (uFramesConsumed < in_pBuffer->uValidFrames
-        //    && uFramesProduced < out_pBuffer->MaxFrames())
-        //{
-        //    //UPOLS()?????
-        //     // Execute DSP that consumes input and produces output at different rate here
-        //    *pOutBuf++ = *pInBuf++;
-        //    ++uFramesConsumed;
-        //    ++uFramesProduced;
-        //}
-    //}
-
-    //in_pBuffer->uValidFrames -= uFramesConsumed;
-    //out_pBuffer->uValidFrames += uFramesProduced;
-
-    out_pBuffer->uValidFrames = in_pBuffer->uValidFrames;
+    in_pBuffer->uValidFrames -= uFramesConsumed;
+    out_pBuffer->uValidFrames += uFramesProduced;
 
     if (in_pBuffer->eState == AK_NoMoreData && in_pBuffer->uValidFrames == 0)
         out_pBuffer->eState = AK_NoMoreData;
@@ -194,8 +186,8 @@ CsVector WP_CeSoundFIRTraceConv_24FX::UPOLS(CsVector* xBuffer)
 
 void WP_CeSoundFIRTraceConv_24FX::FilterIsUpdated(CsVector2 filter)
 {
-    CsVector2 interpolatedFilter{ InterpolateData(filter) };
-    CsVector2 partitionedFilter{ PartitioningIR(&interpolatedFilter) };
+    //CsVector2 interpolatedFilter{ InterpolateData(filter) };
+    CsVector2 partitionedFilter{ PartitioningIR(&filter) };
     InitialiseFDL(partitionedFilter);
 }
 
