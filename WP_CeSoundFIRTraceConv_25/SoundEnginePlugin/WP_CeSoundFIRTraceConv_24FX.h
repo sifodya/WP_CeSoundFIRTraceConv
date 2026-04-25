@@ -85,43 +85,39 @@ public:
 
 private:
 	// My functions
-
-    /// <summary>
-    /// Interpolates the provided 2D vector data and returns the interpolated vector.
-    /// </summary>
-    /// <param name="UE_Data">The input CsVector2 to interpolate.</param>
-    /// <returns>A CsVector2 containing the interpolated result.</returns>
-    CsVector2 InterpolateData(CsVector2 UE_Data);
+	void defaultExecute(AkAudioBuffer* in_pBuffer, AkUInt32 in_ulnOffset, AkAudioBuffer* out_pBuffer);
     /// <summary>
     /// Partitions an impulse response buffer and returns information about the partitioning.
     /// </summary>
     /// <param name="FIR">Pointer to the first element of the impulse response (FIR) buffer to partition.</param>
     /// <returns>A CsVector2 containing the partitioning result (for example, partition sizes or offsets). The exact interpretation depends on the implementation.</returns>
-    CsVector2 PartitioningIR(CsVector2* FIR);
+    CsVector2 partitioningIR(const CsVector2& FIR);
+    CsVector2 partitioningIR_single(const CsVector& FIR);
+
     /// <summary>
     /// Combines multiple FIR passes into a single CsVector.
     /// </summary>
     /// <param name="FIR">Pointer to the first CsVector2 in an array or sequence of FIR passes to be combined.</param>
     /// <returns>A CsVector containing the combined FIR result.</returns>
-    CsVector CombineFIRPasses(CsVector2* FIR);
+    CsVector combineFIRPasses(const CsVector2& FIR);
     /// <summary>
     /// Performs a fast Fourier transform (FFT) on the provided input vector.
     /// </summary>
     /// <param name="xStream">Pointer to a CsVector that contains the time-domain samples to be transformed.</param>
     /// <returns>A CsVectorC containing the complex frequency-domain coefficients (the FFT result).</returns>
-    CsVectorC FFT(CsVector* xStream);
+    CsVectorC FFT(CsVector& xStream);
     /// <summary>
     /// Computes the fast Fourier transform (FFT) of a complex vector.
     /// </summary>
     /// <param name="xStream">Pointer to a CsVectorC that holds the input complex samples (time-domain). The function reads these samples to compute the FFT. Behavior is undefined if this pointer is null.</param>
     /// <returns>A CsVectorC containing the frequency-domain representation (the FFT result) of the input vector.</returns>
-    CsVectorC FFT_C(CsVectorC* xStream);
+    CsVectorC FFT_C(CsVectorC& xStream);
     /// <summary>
     /// Performs the inverse fast Fourier transform (IFFT) on a complex vector.
     /// </summary>
     /// <param name="sum">Pointer to a CsVectorC containing the frequency-domain (complex) samples to be transformed.</param>
     /// <returns>A CsVector containing the time-domain samples produced by the inverse transform.</returns>
-    CsVector IFFT(CsVectorC* sum);
+    CsVector IFFT(CsVectorC& sum);
     /// <summary>
     /// Performs the GUPOLS operation.
     /// </summary>
@@ -131,41 +127,43 @@ private:
     /// </summary>
     /// <param name="xBuffer">Pointer to the input CsVector buffer to be processed by UPOLS. Must point to a valid CsVector instance containing the data to use.</param>
     /// <returns>A CsVector containing the result of the UPOLS computation.</returns>
-    CsVector UPOLS(CsVector* xBuffer);
+    CsVector UPOLS(const CsVector& xBuffer);
     /// <summary>
     /// Performs a filter exchange operation.
     /// </summary>
-    void FilterExchange();
+    void filterExchange();
     /// <summary>
     /// Creates a CsVector from a buffer of AkReal32 samples, formatted for FDL usage.
     /// </summary>
     /// <param name="xBuffer">A vector of AkReal32 samples to convert. Passed by value and therefore copied into the function.</param>
     /// <returns>A CsVector containing the input samples arranged/converted for FDL processing.</returns>
-    CsVector MakeFDLBuffer(std::vector<AkReal32> xBuffer);
+    CsVector makeFDLBuffer(std::vector<AkReal32> xBuffer);
     /// <summary>
     /// Initializes the FDL subsystem or state using the provided 2D vector.
     /// </summary>
     /// <param name="h">A 2D vector (CsVector2) used to initialize FDL. Contains the values required by the initialization routine.</param>
-    void InitialiseFDL(CsVector2 h);
+    void initialiseAndUpdateFDLWithFilter(CsVector2 h);
     /// <summary>
     /// Updates the FDL using the provided CsVector buffer.
     /// </summary>
     /// <param name="xBuffer">A CsVector containing data used to update the FDL. The argument is passed by value.</param>
-    void UpdateFDL(CsVector xBuffer);
+    void updateFDL(CsVector xBuffer);
     /// <summary>
     /// Performs convolution on signals.
     /// </summary>
-    void ConvoluteSignals();
+    void convoluteSignals();
     /// <summary>
     /// Computes and returns the sum of the FDL as a CsVector.
     /// </summary>
     /// <returns>A CsVector containing the computed sum.</returns>
-    CsVector SumFDL();
+    CsVector sumFDL();
     /// <summary>
     /// Signals that a filter has been updated and provides the new 2D filter value.
     /// </summary>
     /// <param name="filter">The updated filter value as a CsVector2 (2D vector).</param>
-    void FilterIsUpdated(CsVector2 filter);
+    void initialiseAndUpdateFilter(const CsVector2& filter);
+
+	CsVector linearConvolution(const CsVector& input, const CsVector& filter);
     //==================================================================================
     // Wwise variables
     WP_CeSoundFIRTraceConv_24FXParams* m_pParams;
@@ -175,21 +173,24 @@ private:
 
     //==================================================================================
 	// My variables
-    AkUInt16 bufferSize { 1024 };
-    const double pi{ std::acos(-1.0) };
-    const CsC minus_i{ (0, -1) };
-    bool filterExRunning{ false };
-    INT32 dataVersion{ -1 };
-    void* gameData = nullptr;
+    AkUInt16 m_bufferSize { 1024 };
+    const double m_pi{ std::acos(-1.0) };
+    const CsC m_minus_i{ (0, -1) };
+    bool m_filterExRunning{ false };
+    INT32 m_dataVersion{ -1 };
+    void* m_vpGameData = nullptr;
 
-    CsVector UpolsInput;
+    CsVector m_UPOLSInput;
+
+    CsVector m_testFIR;
+    CsVector2 m_linConvOverflow;
 
 	// FDL variables
-    CsVector FDLBuffer;
-    CsVector2C FDL_H;
-    CsVector2C FDL_Htemp;
-    CsVector2C FDL_X;
-    CsVector2C FDL_Result;
+    //CsVector m_FDLBuffer;
+    CsVector2C m_FDL_H;
+    CsVector2C m_FDL_Htemp;
+    CsVector2C m_FDL_X;
+    CsVector2C m_FDL_Result;
 
     
 };
