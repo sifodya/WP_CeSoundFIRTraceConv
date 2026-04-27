@@ -63,7 +63,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
     m_pAllocator = in_pAllocator;
     m_pContext = in_pContext;
     
-    OutputDebugStringW(L"Init 7\n");
+    OutputDebugStringW(L"Init 5\n");
 
     /*drwav wav;
     if (!drwav_init_file(&wav, "C:\\Users\\cedri\\Desktop\\ImpulsRecTest1 - Copy.wav", NULL))
@@ -76,12 +76,12 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
 
     drwav_uninit(&wav);*/
 
-    /*std::fstream file("C:\\Users\\cedri\\Desktop\\output.txt");
+    std::fstream file("C:\\Users\\cedri\\Desktop\\output.txt");
     double x;
     while (file >> x)
     {
         m_testFIR.push_back(x);
-    }*/
+    }
     
 	
     /*std::wstring msg = L"Vector size: " + std::to_wstring(m_testFIR.size()) + L"\n";
@@ -91,12 +91,12 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
     }*/
 
 
-    /*OutputDebugStringW(L"Before partition\n");
+    OutputDebugStringW(L"Before partition\n");
     CsVector2 partitionedFilter{ partitioningIR_single(m_testFIR) };
 	OutputDebugStringW(L"Before initialise\n");
-    initialiseAndUpdateFDLWithFilter(partitionedFilter);*/
+    initialiseAndUpdateFDLWithFilter(partitionedFilter);
 
-	m_testFIR.resize(1024, 1.0f);
+	//m_testFIR.resize(24000, 1.0f);
     return AK_Success;
 }
 
@@ -156,56 +156,58 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
 		}
 		m_pContext->PostMonitorData(&nonZeroSamples, sizeof(nonZeroSamples));
     }*/
-	std::wstring msg = L"Block Size: " + std::to_wstring(in_pBuffer->MaxFrames()) + L"\n";
-	OutputDebugStringW(msg.c_str());
-    defaultExecute(in_pBuffer, in_ulnOffset, out_pBuffer);
+	/*std::wstring msg = L"Block Size: " + std::to_wstring(in_pBuffer->MaxFrames()) + L"\n";
+	OutputDebugStringW(msg.c_str());*/
+    //defaultExecute(in_pBuffer, in_ulnOffset, out_pBuffer);
     //TODO bypass when filter is empty
 
-   // const AkUInt32 uNumChannels = in_pBuffer->NumChannels();
+    const AkUInt32 uNumChannels = in_pBuffer->NumChannels();
 
-   // AkUInt16 uFramesConsumed;
-   // AkUInt16 uFramesProduced;
-   // for (AkUInt32 i = 0; i < uNumChannels; ++i)
-   // {
-   //     AkReal32* AK_RESTRICT pInBuf = (AkReal32 * AK_RESTRICT)in_pBuffer->GetChannel(i) + in_ulnOffset;
-   //     AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(i) + out_pBuffer->uValidFrames;
+    AkUInt16 uFramesConsumed;
+    AkUInt16 uFramesProduced;
+    for (AkUInt32 i = 0; i < uNumChannels; ++i)
+    {
+        AkReal32* AK_RESTRICT pInBuf = (AkReal32 * AK_RESTRICT)in_pBuffer->GetChannel(i) + in_ulnOffset;
+        AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(i) + out_pBuffer->uValidFrames;
 
-   //     uFramesConsumed = 0;
-   //     uFramesProduced = 0;
-   //     while (uFramesConsumed < in_pBuffer->uValidFrames
-   //         && uFramesProduced < out_pBuffer->MaxFrames())
-   //     {
-   //         
-   //         while (uFramesConsumed < m_bufferSize)
-   //         {
-			//	//TODO safety check pInBuf is not out of bounds
-   //             m_UPOLSInput.push_back(*pInBuf++);
-			//    ++uFramesConsumed;
-   //         }
-			//CsVector output = UPOLS(m_UPOLSInput);
-   //         while (uFramesProduced < out_pBuffer->MaxFrames())
-   //         {
-   //             *pOutBuf++ = output[0];
-   //             output.erase(output.begin());
-   //             ++uFramesProduced;
-			//}
-   //         output.clear();
-			//m_UPOLSInput.clear();
-   //         // Execute DSP that consumes input and produces output at different rate here
-   //         //*pOutBuf++ = *pInBuf++;
-   //         
-   //     }
-   // }
+		m_bufferSize = in_pBuffer->MaxFrames();
+        uFramesConsumed = 0;
+        uFramesProduced = 0;
+        while (uFramesConsumed < in_pBuffer->uValidFrames
+            && uFramesProduced < out_pBuffer->MaxFrames())
+        {
+            while (uFramesConsumed < in_pBuffer->MaxFrames())
+            {
+                m_UPOLSInput.push_back(*pInBuf++);
+			    ++uFramesConsumed;
+            }
+			CsVector output = UPOLS(m_UPOLSInput);
+            while (uFramesProduced < out_pBuffer->MaxFrames())
+            {
+                *pOutBuf++ = output[0];
+                ++uFramesProduced;
+			}
+			std::wstring msg = L"Max Element of Block: " + std::to_wstring(*std::max_element(m_UPOLSInput.begin(), m_UPOLSInput.end())) + L"\n";
+			OutputDebugStringW(msg.c_str());
+            output.clear();
+            output.erase(output.begin(), output.end());
+			m_UPOLSInput.clear();
+			OutputDebugStringW(L"Block Processed\n");
+            // Execute DSP that consumes input and produces output at different rate here
+            //*pOutBuf++ = *pInBuf++;
+            
+        }
+    }
 
-   // in_pBuffer->uValidFrames -= uFramesConsumed;
-   // out_pBuffer->uValidFrames += uFramesProduced;
+    in_pBuffer->uValidFrames -= uFramesConsumed;
+    out_pBuffer->uValidFrames += uFramesProduced;
 
-   // if (in_pBuffer->eState == AK_NoMoreData && in_pBuffer->uValidFrames == 0)
-   //     out_pBuffer->eState = AK_NoMoreData;
-   // else if (out_pBuffer->uValidFrames == out_pBuffer->MaxFrames())
-   //     out_pBuffer->eState = AK_DataReady;
-   // else
-   //     out_pBuffer->eState = AK_DataNeeded;
+    if (in_pBuffer->eState == AK_NoMoreData && in_pBuffer->uValidFrames == 0)
+        out_pBuffer->eState = AK_NoMoreData;
+    else if (out_pBuffer->uValidFrames == out_pBuffer->MaxFrames())
+        out_pBuffer->eState = AK_DataReady;
+    else
+        out_pBuffer->eState = AK_DataNeeded;
 }
 
 AKRESULT WP_CeSoundFIRTraceConv_24FX::TimeSkip(AkUInt32 &io_uFrames)
@@ -262,7 +264,7 @@ CsVector2 WP_CeSoundFIRTraceConv_24FX::partitioningIR(const CsVector2& FIR)
 
     for (size_t i{ 0 }; i<=partitionedFIR.size(); i++)
     {
-        for(int j {0}; j <= m_bufferSize; j++)
+        for(int j {0}; j < m_bufferSize; j++)
         {
             if(i * m_bufferSize + j < combinedFIR.size())
             partitionedFIR[i][j] = combinedFIR[i * m_bufferSize + j];
@@ -383,7 +385,7 @@ CsVectorC WP_CeSoundFIRTraceConv_24FX::FFT_C(CsVectorC& xStream)
 
     for (size_t k{ 0 }; k <= N-1; k++)
     {
-        double kN = k / N;
+        double kN = k / static_cast<double>(N);
         W[k] = std::exp(CsC(0, -2.0 * m_pi * kN));
     }
 
@@ -453,18 +455,26 @@ void WP_CeSoundFIRTraceConv_24FX::updateFDL(CsVector xBuffer)
 CsVector WP_CeSoundFIRTraceConv_24FX::sumFDL()
 {
 	OutputDebugStringW(L"Summing FDL\n");
-    CsVectorC sum (m_FDL_Result[0].size(), CsC(0.0, 0.0));
+    CsVectorC sum (m_FDL_Result[0].size(), CsC(1.0, 1.0));
     CsVector output(sum.size(), 0.0f);
 
     for (CsVectorC& currentFDL : m_FDL_Result)
     {
+		CsC maxVal = *std::max_element(currentFDL.begin(), currentFDL.end(), [](const CsC& a, const CsC& b) { return std::abs(a) < std::abs(b); });
+        if (maxVal == CsC(0.0, 0.0))
+            continue;
         for (size_t i{ 0 }; i < currentFDL.size(); i++)
+        {
             sum[i] += currentFDL[i];
+        }
     }
+
 
     output = IFFT(sum);
 
-    for (size_t j{ 0 }; j < output.size() / 2; j++)
+    int upperBound = output.size() / 2;
+
+    for (auto j{ 0 }; j < upperBound; j++)
         output.pop_back();
 
 	OutputDebugStringW(L"Summing FDL exit\n");
@@ -503,7 +513,8 @@ void WP_CeSoundFIRTraceConv_24FX::filterExchange()
 
 void WP_CeSoundFIRTraceConv_24FX::defaultExecute(AkAudioBuffer* in_pBuffer, AkUInt32 in_ulnOffset, AkAudioBuffer* out_pBuffer)
 {
-	OutputDebugStringW(L"Default Execute\n");
+    /*std::wstring msg = L"Default Execute, Offset: " + std::to_wstring(in_ulnOffset) + L"\n";
+	OutputDebugStringW(msg.c_str());*/
     const AkUInt32 uNumChannels = in_pBuffer->NumChannels();
 
     AkUInt16 uFramesConsumed;
@@ -513,8 +524,8 @@ void WP_CeSoundFIRTraceConv_24FX::defaultExecute(AkAudioBuffer* in_pBuffer, AkUI
         AkReal32* AK_RESTRICT pInBuf = (AkReal32 * AK_RESTRICT)in_pBuffer->GetChannel(i) + in_ulnOffset;
         AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(i) + out_pBuffer->uValidFrames;
 
-        uFramesConsumed = 0;
-        uFramesProduced = 0;
+        //uFramesConsumed = 0;
+        //uFramesProduced = 0;
         //while (uFramesConsumed < in_pBuffer->uValidFrames
         //    && uFramesProduced < out_pBuffer->MaxFrames())
         //{
@@ -523,25 +534,53 @@ void WP_CeSoundFIRTraceConv_24FX::defaultExecute(AkAudioBuffer* in_pBuffer, AkUI
         //    ++uFramesConsumed;
         //    ++uFramesProduced;
         //}
-		CsVector convInput;
+		
+		
+        std::vector<float> convInput(pInBuf, pInBuf + in_pBuffer->uValidFrames);
+        
         for(auto j{0}; j<in_pBuffer->uValidFrames; j++)
         {
-            convInput.push_back(*pInBuf++);
-            if(!m_linConvOverflow.empty())
+            /*std::wstring msg = L"Input sample: " + std::to_wstring(*pInBuf) + L"\n";
+			OutputDebugStringW(msg.c_str());
+            convInput.push_back(*pInBuf++);*/
+			
+            if(!m_linConvOverflow.empty() && m_linConvOverflow[i].size()!=0)
             {
-                for (auto k{ 0 }; k < m_linConvOverflow.size(); k++)
-                    convInput[j] += m_linConvOverflow[k][j];
+				//OutputDebugStringW(L"Adding overflow\n");
+                for (auto k{ 0 }; k < m_linConvOverflow[i].size(); k++)
+                {
+					if (j < m_linConvOverflow[i][k].size())
+                    convInput[j] *= m_linConvOverflow[i][k][j];
+                }
             }
         }
-		CsVector convOutput = linearConvolution(convInput, m_testFIR);
+		if (!m_linConvOverflow.empty())
+        {
+            for (auto l{ 0 }; l < m_linConvOverflow[i].size(); l++)
+            {
+                OutputDebugStringW(L"Erasing overflow\n");
+                if (m_linConvOverflow[i][l].size() <= in_pBuffer->uValidFrames)
+                    m_linConvOverflow[i][l].erase(m_linConvOverflow[i][l].begin(), m_linConvOverflow[i][l].end());
+                else
+                    m_linConvOverflow[i].erase(m_linConvOverflow[i].begin() + l);
+
+                OutputDebugStringW(L"Overflow after erase\n");
+            }
+        }
+		std::vector<float> convOutput = linearConvolution(convInput, m_testFIR);
         for(auto n{0}; n<out_pBuffer->MaxFrames(); n++)
             *pOutBuf++ = convOutput[n];
 
         convOutput.erase(convOutput.begin(), convOutput.begin() + out_pBuffer->MaxFrames());
-		m_linConvOverflow.push_back(convOutput);
+        if(m_linConvOverflow.empty())
+        {
+			OutputDebugStringW(L"Initialising overflow\n");
+            m_linConvOverflow.resize(uNumChannels);
+        }
+		m_linConvOverflow[i].push_back(convOutput);
 
 		uFramesConsumed = convInput.size();
-		uFramesProduced = convOutput.size();
+		uFramesProduced = convInput.size(); 
     }
 
     in_pBuffer->uValidFrames -= uFramesConsumed;
@@ -560,12 +599,12 @@ void WP_CeSoundFIRTraceConv_24FX::defaultExecute(AkAudioBuffer* in_pBuffer, AkUI
 //    initialiseAndUpdateFilter(filterData.impulses);
 //}
 
-CsVector WP_CeSoundFIRTraceConv_24FX::linearConvolution(const CsVector& input, const CsVector& filter)
+std::vector<float> WP_CeSoundFIRTraceConv_24FX::linearConvolution(const CsVector& input, const CsVector& filter)
 {
 	OutputDebugStringW(L"Linear convolution entry\n");
     size_t N = input.size();
     size_t M = filter.size();
-    CsVector output(N + M - 1, 0.0f);
+    std::vector<float> output(N + M - 1, 0.0f);
     for (size_t n{ 0 }; n < output.size(); n++)
     {
         for (size_t m{ 0 }; m < M; m++)

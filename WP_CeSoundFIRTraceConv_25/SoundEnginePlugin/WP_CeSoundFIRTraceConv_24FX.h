@@ -163,7 +163,7 @@ private:
     /// <param name="filter">The updated filter value as a CsVector2 (2D vector).</param>
     void initialiseAndUpdateFilter(const CsVector2& filter);
 
-	CsVector linearConvolution(const CsVector& input, const CsVector& filter);
+	std::vector<float> linearConvolution(const std::vector<float>& input, const CsVector& filter);
     //==================================================================================
     // Wwise variables
     WP_CeSoundFIRTraceConv_24FXParams* m_pParams;
@@ -173,7 +173,7 @@ private:
 
     //==================================================================================
 	// My variables
-    AkUInt16 m_bufferSize { 1024 };
+    AkUInt16 m_bufferSize { 512 };
     const double m_pi{ std::acos(-1.0) };
     const CsC m_minus_i{ (0, -1) };
     bool m_filterExRunning{ false };
@@ -183,7 +183,7 @@ private:
     CsVector m_UPOLSInput;
 
     CsVector m_testFIR;
-    CsVector2 m_linConvOverflow;
+    std::vector<CsVector2> m_linConvOverflow;
 
 	// FDL variables
     //CsVector m_FDLBuffer;
