@@ -30,8 +30,12 @@ the specific language governing permissions and limitations under the License.
 #include <iostream>
 #include <Windows.h>
 #include <AK/AkWwiseSDKVersion.h>
-#define DR_WAV_IMPLEMENTATION
-#include "dr_wav.h"
+
+#define FFTW_STATIC
+extern "C"
+{
+#include "fftw/fftw3.h"
+}
 
 AK::IAkPlugin* CreateWP_CeSoundFIRTraceConv_24FX(AK::IAkPluginMemAlloc* in_pAllocator)
 {
@@ -49,7 +53,9 @@ WP_CeSoundFIRTraceConv_24FX::WP_CeSoundFIRTraceConv_24FX()
     : m_pParams(nullptr)
     , m_pAllocator(nullptr)
     , m_pContext(nullptr)
-{}
+{
+    OutputDebugStringW(L"Constructor\n");
+}
 
 WP_CeSoundFIRTraceConv_24FX::~WP_CeSoundFIRTraceConv_24FX()
 {
@@ -63,18 +69,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
     m_pAllocator = in_pAllocator;
     m_pContext = in_pContext;
     
-    OutputDebugStringW(L"Init 5\n");
-
-    /*drwav wav;
-    if (!drwav_init_file(&wav, "C:\\Users\\cedri\\Desktop\\ImpulsRecTest1 - Copy.wav", NULL))
-    {
-        throw std::runtime_error("Failed to open Wav file");
-    }
-
-    m_testFIR.resize(wav.totalPCMFrameCount * wav.channels);
-    drwav_read_pcm_frames_f32(&wav, wav.totalPCMFrameCount, m_testFIR.data());
-
-    drwav_uninit(&wav);*/
+    OutputDebugStringW(L"Init\n");
 
     std::fstream file("C:\\Users\\cedri\\Desktop\\output.txt");
     double x;
@@ -83,18 +78,8 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
         m_testFIR.push_back(x);
     }
     
-	
-    /*std::wstring msg = L"Vector size: " + std::to_wstring(m_testFIR.size()) + L"\n";
-    OutputDebugStringW(msg.c_str());
-    for (double v : m_testFIR) {
-        std::cout << v << "\n";
-    }*/
-
-
-    OutputDebugStringW(L"Before partition\n");
     CsVector2 partitionedFilter{ partitioningIR_single(m_testFIR) };
-	OutputDebugStringW(L"Before initialise\n");
-    initialiseAndUpdateFDLWithFilter(partitionedFilter);
+    initialiseAndUpdateFDLWithFilter(partitionedFilter, m_FDL_H);
 
 	//m_testFIR.resize(24000, 1.0f);
     return AK_Success;
@@ -140,22 +125,6 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
         initialiseAndUpdateFilter(gameData->impulses);
     }*/
 
-
-    /*if(m_pContext->CanPostMonitorData())
-    {
-		CsVector nonZeroSamples;
-        for (const CsVector& impulse : gameData->impulses)
-        {
-            for (const float& sample : impulse)
-            {
-                if(sample != 0.0f)
-                {
-                    nonZeroSamples.push_back(sample);
-				}
-            }
-		}
-		m_pContext->PostMonitorData(&nonZeroSamples, sizeof(nonZeroSamples));
-    }*/
 	/*std::wstring msg = L"Block Size: " + std::to_wstring(in_pBuffer->MaxFrames()) + L"\n";
 	OutputDebugStringW(msg.c_str());*/
     //defaultExecute(in_pBuffer, in_ulnOffset, out_pBuffer);
@@ -187,15 +156,11 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
                 *pOutBuf++ = output[0];
                 ++uFramesProduced;
 			}
-			std::wstring msg = L"Max Element of Block: " + std::to_wstring(*std::max_element(m_UPOLSInput.begin(), m_UPOLSInput.end())) + L"\n";
-			OutputDebugStringW(msg.c_str());
+            
             output.clear();
             output.erase(output.begin(), output.end());
 			m_UPOLSInput.clear();
 			OutputDebugStringW(L"Block Processed\n");
-            // Execute DSP that consumes input and produces output at different rate here
-            //*pOutBuf++ = *pInBuf++;
-            
         }
     }
 
@@ -238,12 +203,12 @@ CsVector WP_CeSoundFIRTraceConv_24FX::UPOLS(const CsVector& xBuffer)
 void WP_CeSoundFIRTraceConv_24FX::initialiseAndUpdateFilter(const CsVector2& filter)
 {
     CsVector2 partitionedFilter{ partitioningIR(filter) };
-    initialiseAndUpdateFDLWithFilter(partitionedFilter);
+    initialiseAndUpdateFDLWithFilter(partitionedFilter, m_FDL_H);
 }
 
 void WP_CeSoundFIRTraceConv_24FX::convoluteSignals()
 {
-	OutputDebugStringW(L"Convolution entry\n");
+	//OutputDebugStringW(L"Convolution entry\n");
     m_FDL_Result.clear();
     m_FDL_Result.resize(m_FDL_H.size(), CsVectorC(m_FDL_H[0].size(), CsC(0.0, 0.0)));
     for (size_t i{0}; i<m_FDL_X.size(); i++)
@@ -253,7 +218,7 @@ void WP_CeSoundFIRTraceConv_24FX::convoluteSignals()
             m_FDL_Result[i][j] = m_FDL_H[i][j] * m_FDL_X[i][j];
         }
     }
-	OutputDebugStringW(L"Convolution exit\n");
+	//OutputDebugStringW(L"Convolution exit\n");
 }
 
 CsVector2 WP_CeSoundFIRTraceConv_24FX::partitioningIR(const CsVector2& FIR)
@@ -276,7 +241,6 @@ CsVector2 WP_CeSoundFIRTraceConv_24FX::partitioningIR(const CsVector2& FIR)
 
 CsVector2 WP_CeSoundFIRTraceConv_24FX::partitioningIR_single(const CsVector& FIR)
 {
-	OutputDebugStringW(L"Partition entry\n");
     AkUInt16 P = std::ceil(FIR.size() / static_cast<double>(m_bufferSize));
     CsVector2 partitionedFIR(P, CsVector(2 * m_bufferSize, 0.0f));
 
@@ -286,16 +250,14 @@ CsVector2 WP_CeSoundFIRTraceConv_24FX::partitioningIR_single(const CsVector& FIR
         {
             if (i * m_bufferSize + j < FIR.size())
             {
-                //OutputDebugStringW(L"Partitioning\n");
                 partitionedFIR[i][j] = FIR[i * m_bufferSize + j];
             }
         }
     }
-	OutputDebugStringW(L"Partition exit\n");
     return partitionedFIR;
 }
 
-//TODO: implement method for combining arrays with dissertation of kurt
+//TODO: implement correct combination of FIR passes, for now just summing them up
 CsVector WP_CeSoundFIRTraceConv_24FX::combineFIRPasses(const CsVector2& FIR)
 {
     auto largestVector = std::max_element(FIR.begin(), FIR.end(), [](const CsVector& a, const CsVector& b) {return a.size() < b.size(); });
@@ -303,14 +265,6 @@ CsVector WP_CeSoundFIRTraceConv_24FX::combineFIRPasses(const CsVector2& FIR)
     CsVector combinedFIR(largestVector->size(), 0.0f);
     for (size_t i{ 0 }; i < largestVector->size(); i++)
     {
-        /*for (size_t j{ 0 }; j < FIR->size(); j++)
-        {
-            if (i < (*FIR)[j].size())
-            {
-                combinedFIR[i] += (*FIR)[j][i];
-            }
-        }*/
-
         for (CsVector currentFIR : FIR)
         {
             if (i < currentFIR.size())
@@ -400,36 +354,49 @@ CsVectorC WP_CeSoundFIRTraceConv_24FX::FFT_C(CsVectorC& xStream)
 
 CsVector WP_CeSoundFIRTraceConv_24FX::makeFDLBuffer(std::vector<AkReal32> xBuffer)
 {
-	OutputDebugStringW(L"Making FDL buffer\n");
+	//OutputDebugStringW(L"Making FDL buffer\n");
     CsVector tempBuffer (xBuffer.size()*2, 0.0f);
     for (size_t i{ 0 }; i < xBuffer.size(); i++)
     {
         tempBuffer[i] = xBuffer[i];
-        //tempBuffer[i + m_FDLBuffer.size() / 2] = xBuffer[i];
     }
     return tempBuffer;
 }
 
-void WP_CeSoundFIRTraceConv_24FX::initialiseAndUpdateFDLWithFilter(CsVector2 h)
+void WP_CeSoundFIRTraceConv_24FX::initialiseAndUpdateFDLWithFilter(CsVector2 h, CsVector2C fdl)
 {
     CsVector2C H(h.size(), CsVectorC (h[0].size()));
+	int N = h[0].size();
+	std::vector<fftwf_complex> fftwOutput(N / 2 + 1);
 
-	OutputDebugStringW(L"Before FFT \n");
+	
+
+	//OutputDebugStringW(L"Before FFT \n");
     for (size_t i{0}; i<h.size(); i++)
-         H[i] = FFT(h[i]);
+    {
+        fftwf_plan fftwPlan = fftwf_plan_dft_r2c_1d(N, h[i].data(), fftwOutput.data(), FFTW_ESTIMATE);
+		fftwf_execute(fftwPlan);
+        CsVectorC H_complex(fftwOutput.size(), CsC(0.0, 0.0));
+        for (const auto& c : fftwOutput)
+        {
+            H_complex.emplace_back(c[0], c[1]);
+        }
+        H[i] = H_complex;
+		fftwf_destroy_plan(fftwPlan);
+    }
    
 
-	OutputDebugStringW(L"After FFT \n");
+	// OutputDebugStringW(L"After FFT \n");
     if (m_FDL_H.empty())
     {
-		OutputDebugStringW(L"Initialising FDL\n");
+		//OutputDebugStringW(L"Initialising FDL\n");
 		m_FDL_H.resize(H.size(), CsVectorC(H[0].size()));
         for (size_t j{ 0 }; j < H.size(); j++)
             m_FDL_H[j] = H[j];
     }
     else
     {
-		OutputDebugStringW(L"Updating FDL\n");
+		//OutputDebugStringW(L"Updating FDL\n");
         if (m_filterExRunning)
             return;
         for (size_t j{ 0 }; j < H.size(); j++)
@@ -441,22 +408,36 @@ void WP_CeSoundFIRTraceConv_24FX::initialiseAndUpdateFDLWithFilter(CsVector2 h)
 
 void WP_CeSoundFIRTraceConv_24FX::updateFDL(CsVector xBuffer)
 {
-	OutputDebugStringW(L"Updating FDL for FDL_X\n");
-    CsVectorC X;
-    //for (size_t i{ 0 }; i < xBuffer.size(); i++)
-        X = FFT(xBuffer);
+	//OutputDebugStringW(L"Updating FDL for FDL_X\n");
+	int N = xBuffer.size();
+    //float* in = (float*)fftwf_malloc(sizeof(float) * N);
+    //fftwf_complex* out = (fftwf_complex*)fftwf_malloc(sizeof(fftwf_complex) * (N / 2 + 1));
+    std::vector<fftwf_complex> X (N/2+1);
+
+    //X = FFT(xBuffer);
+	fftwf_plan fftwPlan = fftwf_plan_dft_r2c_1d(N, xBuffer.data(), X.data(), FFTW_ESTIMATE);
+	fftwf_execute(fftwPlan);
     
-    m_FDL_X.push_back(X);
+	CsVectorC X_complex(X.size(), CsC(0.0, 0.0));
+    for(const auto& c : X)
+    {
+        X_complex.emplace_back(c[0], c[1]);
+	}
+
+
+    m_FDL_X.push_back(static_cast<CsVectorC>(X_complex));
 
     if (m_FDL_X.size() > m_FDL_H.size())
         m_FDL_X.pop_back();
+
+	fftwf_destroy_plan(fftwPlan);
 }
 
 CsVector WP_CeSoundFIRTraceConv_24FX::sumFDL()
 {
-	OutputDebugStringW(L"Summing FDL\n");
-    CsVectorC sum (m_FDL_Result[0].size(), CsC(1.0, 1.0));
-    CsVector output(sum.size(), 0.0f);
+	//OutputDebugStringW(L"Summing FDL\n");
+    CsVectorC sum_complex (m_FDL_Result[0].size(), CsC(1.0, 1.0));
+    CsVector output(sum_complex.size(), 0.0f);
 
     for (CsVectorC& currentFDL : m_FDL_Result)
     {
@@ -465,19 +446,30 @@ CsVector WP_CeSoundFIRTraceConv_24FX::sumFDL()
             continue;
         for (size_t i{ 0 }; i < currentFDL.size(); i++)
         {
-            sum[i] += currentFDL[i];
+            sum_complex[i] += currentFDL[i];
         }
     }
 
 
-    output = IFFT(sum);
+	int N = sum_complex.size();
+	std::vector<fftwf_complex> sum_fftw(sum_complex.size());
+    for(size_t i { 0 }; i<sum_complex.size(); i++)
+    {
+        sum_fftw[i][0] = sum_complex[i].real();
+        sum_fftw[i][1] = sum_complex[i].imag();
+	}
 
+	fftwf_plan fftwPlan = fftwf_plan_dft_c2r_1d(N, sum_fftw.data(), output.data(), FFTW_ESTIMATE);
+
+    //output = IFFT(sum_complex);
+	fftwf_execute(fftwPlan);
     int upperBound = output.size() / 2;
 
     for (auto j{ 0 }; j < upperBound; j++)
         output.pop_back();
 
-	OutputDebugStringW(L"Summing FDL exit\n");
+	fftwf_destroy_plan(fftwPlan);
+	//OutputDebugStringW(L"Summing FDL exit\n");
     return output;
 }
 
@@ -501,7 +493,7 @@ CsVector WP_CeSoundFIRTraceConv_24FX::IFFT(CsVectorC& sum)
     return result;
 }
 
-
+//TODO filter exchange with envelopes
 void WP_CeSoundFIRTraceConv_24FX::filterExchange()
 {
     m_filterExRunning = true;
@@ -558,13 +550,10 @@ void WP_CeSoundFIRTraceConv_24FX::defaultExecute(AkAudioBuffer* in_pBuffer, AkUI
         {
             for (auto l{ 0 }; l < m_linConvOverflow[i].size(); l++)
             {
-                OutputDebugStringW(L"Erasing overflow\n");
                 if (m_linConvOverflow[i][l].size() <= in_pBuffer->uValidFrames)
                     m_linConvOverflow[i][l].erase(m_linConvOverflow[i][l].begin(), m_linConvOverflow[i][l].end());
                 else
                     m_linConvOverflow[i].erase(m_linConvOverflow[i].begin() + l);
-
-                OutputDebugStringW(L"Overflow after erase\n");
             }
         }
 		std::vector<float> convOutput = linearConvolution(convInput, m_testFIR);
@@ -574,7 +563,6 @@ void WP_CeSoundFIRTraceConv_24FX::defaultExecute(AkAudioBuffer* in_pBuffer, AkUI
         convOutput.erase(convOutput.begin(), convOutput.begin() + out_pBuffer->MaxFrames());
         if(m_linConvOverflow.empty())
         {
-			OutputDebugStringW(L"Initialising overflow\n");
             m_linConvOverflow.resize(uNumChannels);
         }
 		m_linConvOverflow[i].push_back(convOutput);
@@ -601,7 +589,6 @@ void WP_CeSoundFIRTraceConv_24FX::defaultExecute(AkAudioBuffer* in_pBuffer, AkUI
 
 std::vector<float> WP_CeSoundFIRTraceConv_24FX::linearConvolution(const CsVector& input, const CsVector& filter)
 {
-	OutputDebugStringW(L"Linear convolution entry\n");
     size_t N = input.size();
     size_t M = filter.size();
     std::vector<float> output(N + M - 1, 0.0f);
@@ -615,6 +602,5 @@ std::vector<float> WP_CeSoundFIRTraceConv_24FX::linearConvolution(const CsVector
             }
         }
 	}
-	OutputDebugStringW(L"Linear convolution exit\n");
 	return output;
 }

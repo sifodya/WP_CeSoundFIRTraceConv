@@ -142,7 +142,7 @@ private:
     /// Initializes the FDL subsystem or state using the provided 2D vector.
     /// </summary>
     /// <param name="h">A 2D vector (CsVector2) used to initialize FDL. Contains the values required by the initialization routine.</param>
-    void initialiseAndUpdateFDLWithFilter(CsVector2 h);
+    void initialiseAndUpdateFDLWithFilter(CsVector2 h, CsVector2C fdl);
     /// <summary>
     /// Updates the FDL using the provided CsVector buffer.
     /// </summary>
@@ -191,7 +191,6 @@ private:
     CsVector2C m_FDL_Htemp;
     CsVector2C m_FDL_X;
     CsVector2C m_FDL_Result;
-
     
 };
 
