@@ -32,10 +32,6 @@ the specific language governing permissions and limitations under the License.
 #include <AK/AkWwiseSDKVersion.h>
 
 #define FFTW_STATIC
-extern "C"
-{
-#include "fftw/fftw3.h"
-}
 
 AK::IAkPlugin* CreateWP_CeSoundFIRTraceConv_24FX(AK::IAkPluginMemAlloc* in_pAllocator)
 {
@@ -179,6 +175,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::TimeSkip(AkUInt32 &io_uFrames)
 {
     return AK_DataReady;
 }
+
 
 //===========================================================================================
 
@@ -604,3 +601,4 @@ std::vector<float> WP_CeSoundFIRTraceConv_24FX::linearConvolution(const CsVector
 	}
 	return output;
 }
+

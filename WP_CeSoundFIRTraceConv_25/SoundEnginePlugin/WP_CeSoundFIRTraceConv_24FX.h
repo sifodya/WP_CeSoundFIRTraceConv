@@ -27,6 +27,12 @@ the specific language governing permissions and limitations under the License.
 #ifndef WP_CeSoundFIRTraceConv_24FX_H
 #define WP_CeSoundFIRTraceConv_24FX_H
 
+#define FFTW_STATIC
+extern "C"
+{
+#include "fftw/fftw3.h"
+}
+
 #include "WP_CeSoundFIRTraceConv_24FXParams.h"
 #include "UEDataStruct.h"
 #include <cmath>
@@ -164,6 +170,7 @@ private:
     void initialiseAndUpdateFilter(const CsVector2& filter);
 
 	std::vector<float> linearConvolution(const std::vector<float>& input, const CsVector& filter);
+
     //==================================================================================
     // Wwise variables
     WP_CeSoundFIRTraceConv_24FXParams* m_pParams;
