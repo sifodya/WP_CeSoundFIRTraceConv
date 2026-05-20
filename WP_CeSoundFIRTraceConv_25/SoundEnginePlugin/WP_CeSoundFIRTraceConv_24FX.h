@@ -198,6 +198,11 @@ private:
     CsVector2C m_FDL_Htemp;
     CsVector2C m_FDL_X;
     CsVector2C m_FDL_Result;
+
+    enum CeConv
+    {
+        CECONV_SUCESS, CECONV_FAILURE, CECONV_DATANEEDED, CECONV_WORKING, CECONV_UPDATEINPUT
+    };
     
 };
 

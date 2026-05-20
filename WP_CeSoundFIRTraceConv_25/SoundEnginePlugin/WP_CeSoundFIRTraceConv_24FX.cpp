@@ -71,7 +71,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
     double x;
     while (file >> x)
     {
-        m_testFIR.push_back(x);
+        m_testFIR.emplace_back(x);
     }
     
     CsVector2 partitionedFilter{ partitioningIR_single(m_testFIR) };
@@ -127,7 +127,7 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
     //TODO bypass when filter is empty
 
     const AkUInt32 uNumChannels = in_pBuffer->NumChannels();
-
+ 
     AkUInt16 uFramesConsumed;
     AkUInt16 uFramesProduced;
     for (AkUInt32 i = 0; i < uNumChannels; ++i)
@@ -141,22 +141,37 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
         while (uFramesConsumed < in_pBuffer->uValidFrames
             && uFramesProduced < out_pBuffer->MaxFrames())
         {
-            while (uFramesConsumed < in_pBuffer->MaxFrames())
+            while (uFramesConsumed < in_pBuffer->MaxFrames() && uFramesConsumed < 2 * m_bufferSize)
             {
-                m_UPOLSInput.push_back(*pInBuf++);
+                //m_UPOLSInput.push_back(*pInBuf++);
+                m_UPOLSInput.emplace_back(*pInBuf++);
 			    ++uFramesConsumed;
             }
-			CsVector output = UPOLS(m_UPOLSInput);
-            while (uFramesProduced < out_pBuffer->MaxFrames())
+            CsVector output;
+            //Check length of InputBuffer -> needs 2B lenght
+            if (m_UPOLSInput.size() == 2 * m_bufferSize)
             {
-                *pOutBuf++ = output[0];
-                ++uFramesProduced;
-			}
-            
-            output.clear();
-            output.erase(output.begin(), output.end());
-			m_UPOLSInput.clear();
-			OutputDebugStringW(L"Block Processed\n");
+                OutputDebugStringW(L"Processing Block\n");
+                output = UPOLS(m_UPOLSInput);
+
+                while (uFramesProduced < out_pBuffer->MaxFrames())
+                {
+                    *pOutBuf++ = output[0];
+                    ++uFramesProduced;
+                }
+                output.clear();
+                output.erase(output.begin(), output.end());
+
+                //m_UPOLSInput.clear();
+				m_UPOLSInput.erase(m_UPOLSInput.begin(), m_UPOLSInput.begin() + m_bufferSize);
+
+                OutputDebugStringW(L"Block Processed\n");
+            }
+            else
+            {
+				OutputDebugStringW(L"Not enough data to process\n");
+                continue;
+            }
         }
     }
 
@@ -188,7 +203,7 @@ CsVector WP_CeSoundFIRTraceConv_24FX::UPOLS(const CsVector& xBuffer)
         return output;
 
 	//Push new new input to FDL and update FDL with new input
-    updateFDL(makeFDLBuffer(xBuffer));
+    updateFDL(xBuffer);
 
     convoluteSignals();
     output = sumFDL();
@@ -420,8 +435,7 @@ void WP_CeSoundFIRTraceConv_24FX::updateFDL(CsVector xBuffer)
     {
         X_complex.emplace_back(c[0], c[1]);
 	}
-
-
+	
     m_FDL_X.push_back(static_cast<CsVectorC>(X_complex));
 
     if (m_FDL_X.size() > m_FDL_H.size())
