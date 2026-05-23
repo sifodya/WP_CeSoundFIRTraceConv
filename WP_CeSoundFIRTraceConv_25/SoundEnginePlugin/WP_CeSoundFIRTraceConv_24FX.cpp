@@ -31,7 +31,6 @@ the specific language governing permissions and limitations under the License.
 #include <Windows.h>
 #include <AK/AkWwiseSDKVersion.h>
 
-#define FFTW_STATIC
 
 AK::IAkPlugin* CreateWP_CeSoundFIRTraceConv_24FX(AK::IAkPluginMemAlloc* in_pAllocator)
 {
@@ -74,8 +73,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
         m_testFIR.emplace_back(x);
     }
     
-    CsVector2 partitionedFilter{ partitioningIR_single(m_testFIR) };
-    initialiseAndUpdateFDLWithFilter(partitionedFilter, m_FDL_H);
+    initialiseFDLWithFilter(m_testFIR);
 
 	//m_testFIR.resize(24000, 1.0f);
     return AK_Success;
@@ -127,15 +125,28 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
     //TODO bypass when filter is empty
 
     const AkUInt32 uNumChannels = in_pBuffer->NumChannels();
+
+    
  
     AkUInt16 uFramesConsumed;
     AkUInt16 uFramesProduced;
     for (AkUInt32 i = 0; i < uNumChannels; ++i)
     {
+		m_currentChannel = i;
+
+		std::wstring msg = L"Processing Channel: " + std::to_wstring(i) + L"\n";
+		OutputDebugStringW(msg.c_str());
+        if(!m_FDL_XInitialised)
+        {
+            m_FDL_XInitialised = true;
+            m_FDL_X.resize(uNumChannels, CsVector2C(m_FDL_H.size(), CsVectorC(m_bufferSize + 1, CsC(0.0, 0.0))));
+			m_UPOLSInput.resize(uNumChannels, CsVector(0));
+		}
+
         AkReal32* AK_RESTRICT pInBuf = (AkReal32 * AK_RESTRICT)in_pBuffer->GetChannel(i) + in_ulnOffset;
         AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(i) + out_pBuffer->uValidFrames;
 
-		m_bufferSize = in_pBuffer->MaxFrames();
+		//m_bufferSize = in_pBuffer->MaxFrames();
         uFramesConsumed = 0;
         uFramesProduced = 0;
         while (uFramesConsumed < in_pBuffer->uValidFrames
@@ -144,28 +155,33 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
             while (uFramesConsumed < in_pBuffer->MaxFrames() && uFramesConsumed < 2 * m_bufferSize)
             {
                 //m_UPOLSInput.push_back(*pInBuf++);
-                m_UPOLSInput.emplace_back(*pInBuf++);
+                m_UPOLSInput[m_currentChannel].emplace_back(*pInBuf++);
 			    ++uFramesConsumed;
             }
-            CsVector output;
             //Check length of InputBuffer -> needs 2B lenght
-            if (m_UPOLSInput.size() == 2 * m_bufferSize)
+            if (m_UPOLSInput[m_currentChannel].size() == 2 * m_bufferSize)
             {
-                OutputDebugStringW(L"Processing Block\n");
-                output = UPOLS(m_UPOLSInput);
+                //OutputDebugStringW(L"Processing Block\n");
+                CsVector output;
+                output = UPOLS(m_UPOLSInput[m_currentChannel]);
 
-                while (uFramesProduced < out_pBuffer->MaxFrames())
+                for(auto &sample : output)
+                {
+					*pOutBuf++ = sample;
+					++uFramesProduced;
+				}
+                /*while (uFramesProduced < out_pBuffer->MaxFrames())
                 {
                     *pOutBuf++ = output[0];
                     ++uFramesProduced;
-                }
-                output.clear();
-                output.erase(output.begin(), output.end());
+                }*/
+                
 
-                //m_UPOLSInput.clear();
-				m_UPOLSInput.erase(m_UPOLSInput.begin(), m_UPOLSInput.begin() + m_bufferSize);
+                //m_UPOLSInput.clear();                 
+				m_UPOLSInput[m_currentChannel].erase(m_UPOLSInput[m_currentChannel].begin(), m_UPOLSInput[m_currentChannel].begin() + m_bufferSize);
+                m_UPOLSInput[m_currentChannel].shrink_to_fit();
 
-                OutputDebugStringW(L"Block Processed\n");
+                //OutputDebugStringW(L"Block Processed\n");
             }
             else
             {
@@ -196,14 +212,14 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::TimeSkip(AkUInt32 &io_uFrames)
 
 CsVector WP_CeSoundFIRTraceConv_24FX::UPOLS(const CsVector& xBuffer)
 {
-    CsVector output(xBuffer.size(), 0);
+    CsVector output(m_bufferSize, 0);
 
     //If not filter is present, return output with only 0
     if (m_FDL_H.empty())
         return output;
 
 	//Push new new input to FDL and update FDL with new input
-    updateFDL(xBuffer);
+    pushStreamToFDL(xBuffer);
 
     convoluteSignals();
     output = sumFDL();
@@ -212,22 +228,24 @@ CsVector WP_CeSoundFIRTraceConv_24FX::UPOLS(const CsVector& xBuffer)
     return output;
 }
 
-void WP_CeSoundFIRTraceConv_24FX::initialiseAndUpdateFilter(const CsVector2& filter)
-{
-    CsVector2 partitionedFilter{ partitioningIR(filter) };
-    initialiseAndUpdateFDLWithFilter(partitionedFilter, m_FDL_H);
-}
+//void WP_CeSoundFIRTraceConv_24FX::initialiseAndUpdateFilter(const CsVector2& filter)
+//{
+//    CsVector2 partitionedFilter{ partitioningIR(filter) };
+//    initialiseAndUpdateFDLWithFilter(partitionedFilter, m_FDL_H);
+//}
 
 void WP_CeSoundFIRTraceConv_24FX::convoluteSignals()
 {
 	//OutputDebugStringW(L"Convolution entry\n");
+	/*std::wstring msg = L"Convolution with " + std::to_wstring(m_FDL_H.size()) + L" partitions and x partitions " + std::to_wstring(m_FDL_X[m_currentChannel].size()) + L"\n";
+	OutputDebugStringW(msg.c_str());*/
     m_FDL_Result.clear();
-    m_FDL_Result.resize(m_FDL_H.size(), CsVectorC(m_FDL_H[0].size(), CsC(0.0, 0.0)));
-    for (size_t i{0}; i<m_FDL_X.size(); i++)
+    m_FDL_Result.resize(m_FDL_X[m_currentChannel].size(), CsVectorC(m_bufferSize + 1, CsC(0.0, 0.0)));
+    for (size_t i{0}; i<m_FDL_X[m_currentChannel].size(); i++)
     {
-        for (size_t j {0}; j<m_FDL_H[i].size(); j++)
+        for (size_t j {0}; j<m_bufferSize + 1; j++)
         {
-            m_FDL_Result[i][j] = m_FDL_H[i][j] * m_FDL_X[i][j];
+            m_FDL_Result[i][j] = m_FDL_H[i][j] * m_FDL_X[m_currentChannel][i][j];
         }
     }
 	//OutputDebugStringW(L"Convolution exit\n");
@@ -288,82 +306,6 @@ CsVector WP_CeSoundFIRTraceConv_24FX::combineFIRPasses(const CsVector2& FIR)
     return combinedFIR;
 }
 
-CsVectorC WP_CeSoundFIRTraceConv_24FX::FFT(CsVector& xStream)
-{
-    size_t N = xStream.size();
-    CsVectorC W(N), X(N), X_U, X_G;
-    
-
-    if (N == 1)
-    {
-        CsC c{ xStream[0], 0};
-        X[0] = c;
-        return X;
-    }
-
-    CsVector xStream_G;
-    CsVector xStream_U;
-
-    for (size_t j{ 0 }; j < xStream.size(); j += 2)
-        xStream_G.push_back(xStream[j]);
-
-    for(size_t g{1}; g<xStream.size(); g += 2)
-        xStream_U.push_back(xStream[g]);
-
-    X_G = FFT(xStream_G);
-    X_U = FFT(xStream_U);
-
-    for (int k {0}; k <= N - 1; k++)
-    {
-        double kN{ k / static_cast<double>(N) };
-        W[k] = std::exp(m_minus_i * 2.0 * m_pi * kN);
-    }
-
-    for (int i{ 0 }; i < N / 2; i++)
-    {
-        X[i] = X_G[i] + W[i] * X_U[i];
-        X[i+N/2] = X_G[i] - W[i] * X_U[i];
-    }
-    return X;
-}
-
-CsVectorC WP_CeSoundFIRTraceConv_24FX::FFT_C(CsVectorC& xStream)
-{
-    size_t N = xStream.size();
-    CsVectorC W(N), X(N), X_U, X_G;
-
-    if (N == 1)
-    {
-        X[0] = xStream[0];
-        return X;
-    }
-
-    CsVectorC xStream_G;
-    CsVectorC xStream_U;
-
-    for (size_t j{ 0 }; j < N; j += 2)
-        xStream_G.push_back(xStream[j]);
-    for (size_t j{ 1 }; j < N; j += 2)
-        xStream_U.push_back(xStream[j]);
-
-    X_G = FFT_C(xStream_G);
-    X_U = FFT_C(xStream_U);
-
-    for (size_t k{ 0 }; k <= N-1; k++)
-    {
-        double kN = k / static_cast<double>(N);
-        W[k] = std::exp(CsC(0, -2.0 * m_pi * kN));
-    }
-
-    for (size_t i{ 0 }; i < N / 2; i++)
-    {
-        X[i] = X_G[i] + W[i] * X_U[i];
-        X[i + N / 2] = X_G[i] - W[i] * X_U[i];
-    }
-
-    return X;
-}
-
 CsVector WP_CeSoundFIRTraceConv_24FX::makeFDLBuffer(std::vector<AkReal32> xBuffer)
 {
 	//OutputDebugStringW(L"Making FDL buffer\n");
@@ -375,133 +317,101 @@ CsVector WP_CeSoundFIRTraceConv_24FX::makeFDLBuffer(std::vector<AkReal32> xBuffe
     return tempBuffer;
 }
 
-void WP_CeSoundFIRTraceConv_24FX::initialiseAndUpdateFDLWithFilter(CsVector2 h, CsVector2C fdl)
+void WP_CeSoundFIRTraceConv_24FX::initialiseFDLWithFilter(CsVector h)
 {
-    CsVector2C H(h.size(), CsVectorC (h[0].size()));
-	int N = h[0].size();
-	std::vector<fftwf_complex> fftwOutput(N / 2 + 1);
-
+    AkUInt16 P = std::ceil(h.size()/ static_cast<float>(m_bufferSize));
 	
-
-	//OutputDebugStringW(L"Before FFT \n");
-    for (size_t i{0}; i<h.size(); i++)
+    for (auto i{ 0 }; i < P; i++)
     {
-        fftwf_plan fftwPlan = fftwf_plan_dft_r2c_1d(N, h[i].data(), fftwOutput.data(), FFTW_ESTIMATE);
-		fftwf_execute(fftwPlan);
-        CsVectorC H_complex(fftwOutput.size(), CsC(0.0, 0.0));
-        for (const auto& c : fftwOutput)
+        CsVector tempBuffer(2 * m_bufferSize, 0.0f);
+        std::vector<std::complex<float>> fftOutput(m_bufferSize + 1, CsC(0.0, 0.0));
+        for (auto j{ 0 }; j < m_bufferSize; j++)
         {
-            H_complex.emplace_back(c[0], c[1]);
+            if (i * m_bufferSize + j < h.size())
+                tempBuffer[j] = h[i * m_bufferSize + j];
         }
-        H[i] = H_complex;
-		fftwf_destroy_plan(fftwPlan);
-    }
-   
-
-	// OutputDebugStringW(L"After FFT \n");
-    if (m_FDL_H.empty())
-    {
-		//OutputDebugStringW(L"Initialising FDL\n");
-		m_FDL_H.resize(H.size(), CsVectorC(H[0].size()));
-        for (size_t j{ 0 }; j < H.size(); j++)
-            m_FDL_H[j] = H[j];
-    }
-    else
-    {
-		//OutputDebugStringW(L"Updating FDL\n");
-        if (m_filterExRunning)
-            return;
-        for (size_t j{ 0 }; j < H.size(); j++)
-            m_FDL_Htemp[j] = H[j];
-
-        filterExchange();
+		CsShape shape = { tempBuffer.size() };
+		CsStride stride_in = { sizeof(float) };
+		CsStride stride_out = { sizeof(std::complex<float>) };
+		CsShape axes = { 0 };
+        pocketfft::detail::r2c(
+            shape,
+            stride_in,
+            stride_out,
+            axes,
+            pocketfft::FORWARD,
+            tempBuffer.data(),
+            fftOutput.data(),
+            1.0f);
+        m_FDL_H.push_back(fftOutput);
     }
 }
 
-void WP_CeSoundFIRTraceConv_24FX::updateFDL(CsVector xBuffer)
+void WP_CeSoundFIRTraceConv_24FX::pushStreamToFDL(CsVector xBuffer)
 {
 	//OutputDebugStringW(L"Updating FDL for FDL_X\n");
-	int N = xBuffer.size();
-    //float* in = (float*)fftwf_malloc(sizeof(float) * N);
-    //fftwf_complex* out = (fftwf_complex*)fftwf_malloc(sizeof(fftwf_complex) * (N / 2 + 1));
-    std::vector<fftwf_complex> X (N/2+1);
-
-    //X = FFT(xBuffer);
-	fftwf_plan fftwPlan = fftwf_plan_dft_r2c_1d(N, xBuffer.data(), X.data(), FFTW_ESTIMATE);
-	fftwf_execute(fftwPlan);
     
-	CsVectorC X_complex(X.size(), CsC(0.0, 0.0));
-    for(const auto& c : X)
+    CsVectorC X (m_bufferSize + 1, CsC(0.0, 0.0));
+
+    CsShape shape = { xBuffer.size() };
+    CsStride stride_in = { sizeof(float) };
+    CsStride stride_out = { sizeof(std::complex<float>) };
+    CsShape axes = { 0 };
+    pocketfft::detail::r2c(
+        shape,
+        stride_in,
+        stride_out,
+        axes,
+        pocketfft::FORWARD,
+        xBuffer.data(),
+        X.data(),
+		1.0f);
+
+	m_FDL_X[m_currentChannel].insert(m_FDL_X[m_currentChannel].begin(), X);
+
+    if (m_FDL_X[m_currentChannel].size() > m_FDL_H.size())
     {
-        X_complex.emplace_back(c[0], c[1]);
-	}
-	
-    m_FDL_X.push_back(static_cast<CsVectorC>(X_complex));
-
-    if (m_FDL_X.size() > m_FDL_H.size())
-        m_FDL_X.pop_back();
-
-	fftwf_destroy_plan(fftwPlan);
+        m_FDL_X[m_currentChannel].pop_back();
+    }
 }
 
 CsVector WP_CeSoundFIRTraceConv_24FX::sumFDL()
 {
 	//OutputDebugStringW(L"Summing FDL\n");
-    CsVectorC sum_complex (m_FDL_Result[0].size(), CsC(1.0, 1.0));
-    CsVector output(sum_complex.size(), 0.0f);
+    CsVectorC sum_complex (m_bufferSize + 1, CsC(0.0, 0.0));
+    CsVector output(2 * m_bufferSize, 0.0f);
+
 
     for (CsVectorC& currentFDL : m_FDL_Result)
     {
-		CsC maxVal = *std::max_element(currentFDL.begin(), currentFDL.end(), [](const CsC& a, const CsC& b) { return std::abs(a) < std::abs(b); });
+		/*CsC maxVal = *std::max_element(currentFDL.begin(), currentFDL.end(), [](const CsC& a, const CsC& b) { return std::abs(a) < std::abs(b); });
         if (maxVal == CsC(0.0, 0.0))
-            continue;
+            continue;*/
         for (size_t i{ 0 }; i < currentFDL.size(); i++)
         {
             sum_complex[i] += currentFDL[i];
         }
     }
 
+    CsShape shape = { output.size() };
+    CsStride stride_in = { sizeof(std::complex<float>) };
+    CsStride stride_out = { sizeof(float) };
+    CsShape axes = { 0 };
+    pocketfft::detail::c2r(
+        shape,
+        stride_in,
+        stride_out,
+        axes,
+        pocketfft::BACKWARD,
+        sum_complex.data(),
+		output.data(),
+		1.0f);
 
-	int N = sum_complex.size();
-	std::vector<fftwf_complex> sum_fftw(sum_complex.size());
-    for(size_t i { 0 }; i<sum_complex.size(); i++)
-    {
-        sum_fftw[i][0] = sum_complex[i].real();
-        sum_fftw[i][1] = sum_complex[i].imag();
-	}
+    output.erase(output.begin(), output.begin() + m_bufferSize);
+	output.shrink_to_fit();
 
-	fftwf_plan fftwPlan = fftwf_plan_dft_c2r_1d(N, sum_fftw.data(), output.data(), FFTW_ESTIMATE);
-
-    //output = IFFT(sum_complex);
-	fftwf_execute(fftwPlan);
-    int upperBound = output.size() / 2;
-
-    for (auto j{ 0 }; j < upperBound; j++)
-        output.pop_back();
-
-	fftwf_destroy_plan(fftwPlan);
 	//OutputDebugStringW(L"Summing FDL exit\n");
     return output;
-}
-
-CsVector WP_CeSoundFIRTraceConv_24FX::IFFT(CsVectorC& sum)
-{
-    size_t N = sum.size();
-    CsVectorC X_conj(N);
-
-    for (size_t i{ 0 }; i < N; i++)
-        X_conj[i] = std::conj(sum[i]);
-
-    CsVectorC X = FFT_C(X_conj);
-
-    CsVector result(N);
-    for (size_t i{ 0 }; i < N; i++)
-    {
-        CsC val = std::conj(X[i] / static_cast<double>(N));
-        result[i] = static_cast<float>(val.real());
-    }
-
-    return result;
 }
 
 //TODO filter exchange with envelopes

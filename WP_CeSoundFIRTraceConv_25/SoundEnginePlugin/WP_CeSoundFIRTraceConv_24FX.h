@@ -27,11 +27,7 @@ the specific language governing permissions and limitations under the License.
 #ifndef WP_CeSoundFIRTraceConv_24FX_H
 #define WP_CeSoundFIRTraceConv_24FX_H
 
-#define FFTW_STATIC
-extern "C"
-{
-#include "fftw/fftw3.h"
-}
+#include "pocketfft-cpp/pocketfft_hdronly.h"
 
 #include "WP_CeSoundFIRTraceConv_24FXParams.h"
 #include "UEDataStruct.h"
@@ -42,10 +38,14 @@ extern "C"
 
 typedef std::vector<float>  CsVector;
 typedef std::vector <std::vector<float>> CsVector2;
-typedef std::vector<std::complex<double>> CsVectorC;
-typedef std::vector<std::vector<std::complex<double>>> CsVector2C;
+typedef std::vector<std::complex<float>> CsVectorC;
+typedef std::vector<std::vector<std::complex<float>>> CsVector2C;
+typedef std::vector<std::vector<std::vector<std::complex<float>>>> CsVector3C;
 
-typedef std::complex<double> CsC;
+typedef pocketfft::shape_t CsShape;
+typedef pocketfft::stride_t CsStride;
+
+typedef std::complex<float> CsC;
 
 /// See https://www.audiokinetic.com/library/edge/?source=SDK&id=soundengine__plugins__effects.html
 /// for the documentation about effect plug-ins
@@ -107,24 +107,6 @@ private:
     /// <returns>A CsVector containing the combined FIR result.</returns>
     CsVector combineFIRPasses(const CsVector2& FIR);
     /// <summary>
-    /// Performs a fast Fourier transform (FFT) on the provided input vector.
-    /// </summary>
-    /// <param name="xStream">Pointer to a CsVector that contains the time-domain samples to be transformed.</param>
-    /// <returns>A CsVectorC containing the complex frequency-domain coefficients (the FFT result).</returns>
-    CsVectorC FFT(CsVector& xStream);
-    /// <summary>
-    /// Computes the fast Fourier transform (FFT) of a complex vector.
-    /// </summary>
-    /// <param name="xStream">Pointer to a CsVectorC that holds the input complex samples (time-domain). The function reads these samples to compute the FFT. Behavior is undefined if this pointer is null.</param>
-    /// <returns>A CsVectorC containing the frequency-domain representation (the FFT result) of the input vector.</returns>
-    CsVectorC FFT_C(CsVectorC& xStream);
-    /// <summary>
-    /// Performs the inverse fast Fourier transform (IFFT) on a complex vector.
-    /// </summary>
-    /// <param name="sum">Pointer to a CsVectorC containing the frequency-domain (complex) samples to be transformed.</param>
-    /// <returns>A CsVector containing the time-domain samples produced by the inverse transform.</returns>
-    CsVector IFFT(CsVectorC& sum);
-    /// <summary>
     /// Performs the GUPOLS operation.
     /// </summary>
     void GUPOLS();
@@ -148,12 +130,12 @@ private:
     /// Initializes the FDL subsystem or state using the provided 2D vector.
     /// </summary>
     /// <param name="h">A 2D vector (CsVector2) used to initialize FDL. Contains the values required by the initialization routine.</param>
-    void initialiseAndUpdateFDLWithFilter(CsVector2 h, CsVector2C fdl);
+    void initialiseFDLWithFilter(CsVector h);
     /// <summary>
     /// Updates the FDL using the provided CsVector buffer.
     /// </summary>
     /// <param name="xBuffer">A CsVector containing data used to update the FDL. The argument is passed by value.</param>
-    void updateFDL(CsVector xBuffer);
+    void pushStreamToFDL(CsVector xBuffer);
     /// <summary>
     /// Performs convolution on signals.
     /// </summary>
@@ -167,7 +149,7 @@ private:
     /// Signals that a filter has been updated and provides the new 2D filter value.
     /// </summary>
     /// <param name="filter">The updated filter value as a CsVector2 (2D vector).</param>
-    void initialiseAndUpdateFilter(const CsVector2& filter);
+    //void initialiseAndUpdateFilter(const CsVector2& filter);
 
 	std::vector<float> linearConvolution(const std::vector<float>& input, const CsVector& filter);
 
@@ -184,10 +166,12 @@ private:
     const double m_pi{ std::acos(-1.0) };
     const CsC m_minus_i{ (0, -1) };
     bool m_filterExRunning{ false };
+	bool m_FDL_XInitialised{ false };
     INT32 m_dataVersion{ -1 };
     void* m_vpGameData = nullptr;
+	unsigned int m_currentChannel{ 0 };
 
-    CsVector m_UPOLSInput;
+    CsVector2 m_UPOLSInput;
 
     CsVector m_testFIR;
     std::vector<CsVector2> m_linConvOverflow;
@@ -196,7 +180,7 @@ private:
     //CsVector m_FDLBuffer;
     CsVector2C m_FDL_H;
     CsVector2C m_FDL_Htemp;
-    CsVector2C m_FDL_X;
+    CsVector3C m_FDL_X;
     CsVector2C m_FDL_Result;
 
     enum CeConv
