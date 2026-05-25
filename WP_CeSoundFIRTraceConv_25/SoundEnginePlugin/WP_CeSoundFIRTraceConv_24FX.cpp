@@ -34,11 +34,13 @@ the specific language governing permissions and limitations under the License.
 
 AK::IAkPlugin* CreateWP_CeSoundFIRTraceConv_24FX(AK::IAkPluginMemAlloc* in_pAllocator)
 {
+    OutputDebugStringW(L"Create\n");
     return AK_PLUGIN_NEW(in_pAllocator, WP_CeSoundFIRTraceConv_24FX());
 }
 
 AK::IAkPluginParam* CreateWP_CeSoundFIRTraceConv_24FXParams(AK::IAkPluginMemAlloc* in_pAllocator)
 {
+    OutputDebugStringW(L"CreateParams\n");
     return AK_PLUGIN_NEW(in_pAllocator, WP_CeSoundFIRTraceConv_24FXParams());
 }
 
@@ -54,6 +56,7 @@ WP_CeSoundFIRTraceConv_24FX::WP_CeSoundFIRTraceConv_24FX()
 
 WP_CeSoundFIRTraceConv_24FX::~WP_CeSoundFIRTraceConv_24FX()
 {
+	OutputDebugStringW(L"Destructor\n");
     m_vpGameData = nullptr;
     delete m_vpGameData;
 }
@@ -66,7 +69,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
     
     OutputDebugStringW(L"Init\n");
 
-    std::fstream file("C:\\Users\\cedri\\Desktop\\output.txt");
+    std::fstream file("C:\\Users\\cedri\\Desktop\\output3.txt");
     double x;
     while (file >> x)
     {
@@ -81,17 +84,20 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
 
 AKRESULT WP_CeSoundFIRTraceConv_24FX::Term(AK::IAkPluginMemAlloc* in_pAllocator)
 {
+	OutputDebugStringW(L"Term\n");
     AK_PLUGIN_DELETE(in_pAllocator, this);
     return AK_Success;
 }
 
 AKRESULT WP_CeSoundFIRTraceConv_24FX::Reset()
 {
+	OutputDebugStringW(L"Reset\n");
     return AK_Success;
 }
 
 AKRESULT WP_CeSoundFIRTraceConv_24FX::GetPluginInfo(AkPluginInfo& out_rPluginInfo)
 {
+    OutputDebugStringW(L"GetPluginInfo\n");
     out_rPluginInfo.eType = AkPluginTypeEffect;
     out_rPluginInfo.bIsInPlace = false;
 	out_rPluginInfo.bCanProcessObjects = false;
@@ -204,6 +210,7 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
 
 AKRESULT WP_CeSoundFIRTraceConv_24FX::TimeSkip(AkUInt32 &io_uFrames)
 {
+    OutputDebugStringW(L"TimeSkip\n");
     return AK_DataReady;
 }
 
@@ -525,4 +532,3 @@ std::vector<float> WP_CeSoundFIRTraceConv_24FX::linearConvolution(const CsVector
 	}
 	return output;
 }
-

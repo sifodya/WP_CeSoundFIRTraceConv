@@ -23,7 +23,7 @@ the specific language governing permissions and limitations under the License.
 
   Copyright (c) 2025 Audiokinetic Inc.
 *******************************************************************************/
-
+#pragma once
 #ifndef WP_CeSoundFIRTraceConv_24FX_H
 #define WP_CeSoundFIRTraceConv_24FX_H
 
@@ -89,7 +89,7 @@ public:
 
     //void SetCustomData(const UEDataStruct& filterData);
 
-private:
+
 	// My functions
 	void defaultExecute(AkAudioBuffer* in_pBuffer, AkUInt32 in_ulnOffset, AkAudioBuffer* out_pBuffer);
     /// <summary>
