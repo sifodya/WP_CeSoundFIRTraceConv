@@ -30,7 +30,10 @@ the specific language governing permissions and limitations under the License.
 #include <iostream>
 #include <Windows.h>
 #include <AK/AkWwiseSDKVersion.h>
-
+#include <crtdbg.h>
+//#include <afx.h>
+#define TESTING 0
+#define LIVE 0
 
 AK::IAkPlugin* CreateWP_CeSoundFIRTraceConv_24FX(AK::IAkPluginMemAlloc* in_pAllocator)
 {
@@ -70,14 +73,52 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
     OutputDebugStringW(L"Init\n");
 
     std::fstream file("C:\\Users\\cedri\\Desktop\\output3.txt");
+    
     double x;
     while (file >> x)
     {
         m_testFIR.emplace_back(x);
     }
-    
+#if TESTING
+    std::fstream fileResult("C:\\Users\\cedri\\Desktop\\ComplexResult.csv");
+    CsVector2C expectedResult;
+    std::string line;
+    while (std::getline(fileResult, line)) {
+
+        std::stringstream ss(line);
+
+        std::string cell;
+
+        std::vector<CsC> row;
+
+        while (std::getline(ss, cell, ',')) {
+            row.push_back(parseComplex(cell));
+        }
+
+        expectedResult.push_back(row);
+    }
+
+    file.close();
+    fileResult.close();
+#endif
     initialiseFDLWithFilter(m_testFIR);
 
+#if TESTING
+	_ASSERT_EXPR(expectedResult.size() == m_FDL_H.size(), L"Expected result size does not match FDL_H size");
+
+    float tolerance = 1e-5f;
+
+    for (auto i{ 0 }; i < expectedResult.size(); i++)
+    {
+        _ASSERT_EXPR(m_FDL_H[i].size() == expectedResult[i].size(), L"Col mismatch");
+        for (auto j{ 0 }; j < expectedResult[i].size(); j++)
+        {
+            _ASSERT_EXPR(std::abs(expectedResult[i][j].real() - m_FDL_H[i][j].real()) < tolerance, L"Real part mismatch");
+            _ASSERT_EXPR(std::abs(expectedResult[i][j].imag() - m_FDL_H[i][j].imag()) < tolerance, L"Imaginary part mismatch");
+        }
+    }
+#endif
+    
 	//m_testFIR.resize(24000, 1.0f);
     return AK_Success;
 }
@@ -107,8 +148,9 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::GetPluginInfo(AkPluginInfo& out_rPluginInf
 
 void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in_ulnOffset, AkAudioBuffer* out_pBuffer)
 {
+#if LIVE
     //Unit Test and assertions
-    /*AkUInt32 dataSize{ 0 };
+    AkUInt32 dataSize{ 0 };
     m_pContext->GetPluginCustomGameData(m_vpGameData, dataSize);
     if(m_vpGameData == nullptr)
     {
@@ -123,13 +165,13 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
 		OutputDebugStringW(L"Updating filter\n");
         m_dataVersion = gameData->version;
         initialiseAndUpdateFilter(gameData->impulses);
-    }*/
+    }
 
 	/*std::wstring msg = L"Block Size: " + std::to_wstring(in_pBuffer->MaxFrames()) + L"\n";
 	OutputDebugStringW(msg.c_str());*/
-    //defaultExecute(in_pBuffer, in_ulnOffset, out_pBuffer);
+    defaultExecute(in_pBuffer, in_ulnOffset, out_pBuffer);
     //TODO bypass when filter is empty
-
+#endif
     const AkUInt32 uNumChannels = in_pBuffer->NumChannels();
 
     
@@ -170,7 +212,7 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
                 //OutputDebugStringW(L"Processing Block\n");
                 CsVector output;
                 output = UPOLS(m_UPOLSInput[m_currentChannel]);
-
+                appendVectorText(m_filename, output);
                 for(auto &sample : output)
                 {
 					*pOutBuf++ = sample;
@@ -444,18 +486,19 @@ void WP_CeSoundFIRTraceConv_24FX::defaultExecute(AkAudioBuffer* in_pBuffer, AkUI
         AkReal32* AK_RESTRICT pInBuf = (AkReal32 * AK_RESTRICT)in_pBuffer->GetChannel(i) + in_ulnOffset;
         AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(i) + out_pBuffer->uValidFrames;
 
-        //uFramesConsumed = 0;
-        //uFramesProduced = 0;
-        //while (uFramesConsumed < in_pBuffer->uValidFrames
-        //    && uFramesProduced < out_pBuffer->MaxFrames())
-        //{
-        //    // Execute DSP that consumes input and produces output at different rate here
-        //    *pOutBuf++ = *pInBuf++;
-        //    ++uFramesConsumed;
-        //    ++uFramesProduced;
-        //}
-		
-		
+#if LIVE
+        uFramesConsumed = 0;
+        uFramesProduced = 0;
+        while (uFramesConsumed < in_pBuffer->uValidFrames
+            && uFramesProduced < out_pBuffer->MaxFrames())
+        {
+            // Execute DSP that consumes input and produces output at different rate here
+            *pOutBuf++ = *pInBuf++;
+            ++uFramesConsumed;
+            ++uFramesProduced;
+        }
+#endif
+#if LIVE == 0
         std::vector<float> convInput(pInBuf, pInBuf + in_pBuffer->uValidFrames);
         
         for(auto j{0}; j<in_pBuffer->uValidFrames; j++)
@@ -497,6 +540,7 @@ void WP_CeSoundFIRTraceConv_24FX::defaultExecute(AkAudioBuffer* in_pBuffer, AkUI
 
 		uFramesConsumed = convInput.size();
 		uFramesProduced = convInput.size(); 
+#endif
     }
 
     in_pBuffer->uValidFrames -= uFramesConsumed;
@@ -531,4 +575,85 @@ std::vector<float> WP_CeSoundFIRTraceConv_24FX::linearConvolution(const CsVector
         }
 	}
 	return output;
+}
+
+CsC WP_CeSoundFIRTraceConv_24FX::parseComplex(const std::string& s)
+{
+    // Find separator between real and imaginary part
+    //size_t plusPos = s.find('+');
+    //size_t minusPos = s.find('-', 1);
+
+    //size_t splitPos;
+
+    //if (plusPos != std::string::npos)
+    //    splitPos = plusPos;
+    //else
+    //    splitPos = minusPos;
+
+    //float real = std::stof(s.substr(0, splitPos));
+
+    //std::string imagStr = s.substr(splitPos);
+
+    //// Remove trailing 'i'
+    //imagStr.pop_back();
+
+    //float imag = std::stof(imagStr);
+
+    //return CsC(real, imag);
+    std::stringstream ss(s);
+    float real = 0.0f;
+    float imag = 0.0f;
+    char sign = '+';
+    char i_char = '\0';
+
+    // 1. Read the real part
+    if (!(ss >> real)) {
+        // Handle error: couldn't read real number
+    }
+
+    // 2. Read the operator ('+' or '-')
+    // If the next thing is 'i', it means there was no real part (e.g., "4i" or "-4i")
+    // This stream approach assumes standard "a + bi" or "a - bi" format.
+    ss >> sign;
+
+    if (sign == '+' || sign == '-') {
+        // 3. Read the imaginary magnitude
+        if (ss >> imag) {
+            // Read the trailing 'i'
+            ss >> i_char;
+        }
+        else {
+            // Edge case: string was "3 + i" or "3 - i", meaning imag is 1 or -1
+            ss.clear();
+            ss >> i_char; // try to read the 'i'
+            imag = 1.0f;
+        }
+
+        if (sign == '-') {
+            imag = -imag;
+        }
+    }
+    else if (sign == 'i') {
+        // Pure imaginary number format like "3.0i" (real was parsed as 3.0, but it was actually imag)
+        imag = real;
+        real = 0.0f;
+    }
+
+    return CsC(real, imag);
+}
+
+void WP_CeSoundFIRTraceConv_24FX::appendVectorText(const std::string& filename, const std::vector<float>& vec) {
+    // Open in standard text append mode
+    std::ofstream outFile(filename, std::ios::app);
+
+    if (!outFile) {
+        std::cerr << "Error opening file for writing!" << std::endl;
+        return;
+    }
+
+    // Write elements separated by spaces, and a newline at the end of the vector
+    for (float val : vec) {
+        outFile << val << " ";
+    }
+    outFile << "\n";
 }
