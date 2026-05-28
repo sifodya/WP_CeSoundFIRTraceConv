@@ -53,7 +53,8 @@ AKRESULT WP_CeSoundFIRTraceConv_24FXParams::Init(AK::IAkPluginMemAlloc* in_pAllo
     if (in_ulBlockSize == 0)
     {
         // Initialize default parameters here
-        RTPC.fPlaceholder = 0.0f;
+        RTPC.stretch = 0.0f;
+        
         m_paramChangeHandler.SetAllParamChanges();
         return AK_Success;
     }
@@ -73,7 +74,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FXParams::SetParamsBlock(const void* in_pParam
     AkUInt8* pParamsBlock = (AkUInt8*)in_pParamsBlock;
 
     // Read bank data here
-    RTPC.fPlaceholder = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.stretch = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
     CHECKBANKDATASIZE(in_ulBlockSize, eResult);
     m_paramChangeHandler.SetAllParamChanges();
 
@@ -87,9 +88,9 @@ AKRESULT WP_CeSoundFIRTraceConv_24FXParams::SetParam(AkPluginParamID in_paramID,
     // Handle parameter change here
     switch (in_paramID)
     {
-    case PARAM_PLACEHOLDER_ID:
-        RTPC.fPlaceholder = *((AkReal32*)in_pValue);
-        m_paramChangeHandler.SetParamChange(PARAM_PLACEHOLDER_ID);
+    case PARAM_STRETCH_ID:
+        RTPC.stretch = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_STRETCH_ID);
         break;
     default:
         eResult = AK_InvalidParameter;
