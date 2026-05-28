@@ -79,6 +79,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
     {
         m_testFIR.emplace_back(x);
     }
+	
 #if TESTING
     std::fstream fileResult("C:\\Users\\cedri\\Desktop\\ComplexResult.csv");
     CsVector2C expectedResult;
@@ -209,6 +210,9 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
             //Check length of InputBuffer -> needs 2B lenght
             if (m_UPOLSInput[m_currentChannel].size() == 2 * m_bufferSize)
             {
+				/*auto maxElem = std::max_element(m_UPOLSInput[m_currentChannel].begin(), m_UPOLSInput[m_currentChannel].end());
+				std::wstring msg = L"Max element m_UPOLSInput: " + std::to_wstring(*maxElem) + L"\n";
+				OutputDebugStringW(msg.c_str());*/
                 //OutputDebugStringW(L"Processing Block\n");
                 CsVector output;
                 output = UPOLS(m_UPOLSInput[m_currentChannel]);
@@ -416,6 +420,7 @@ void WP_CeSoundFIRTraceConv_24FX::pushStreamToFDL(CsVector xBuffer)
         X.data(),
 		1.0f);
 
+
 	m_FDL_X[m_currentChannel].insert(m_FDL_X[m_currentChannel].begin(), X);
 
     if (m_FDL_X[m_currentChannel].size() > m_FDL_H.size())
@@ -454,7 +459,7 @@ CsVector WP_CeSoundFIRTraceConv_24FX::sumFDL()
         pocketfft::BACKWARD,
         sum_complex.data(),
 		output.data(),
-		1.0f);
+		1.0f/1024.0f);
 
     output.erase(output.begin(), output.begin() + m_bufferSize);
 	output.shrink_to_fit();
