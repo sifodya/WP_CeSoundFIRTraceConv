@@ -121,6 +121,13 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
 #endif
     
 	//m_testFIR.resize(24000, 1.0f);
+	AkChannelConfig channelConfig;
+    m_pContext->GetParentChannelConfig(channelConfig);
+    if(channelConfig.uNumChannels == 0 && channelConfig.uNumChannels != 1)
+    {
+        OutputDebugStringW(L"Invalid number of channels\n");
+        return AK_UnsupportedChannelConfig;
+	}
     return AK_Success;
 }
 
