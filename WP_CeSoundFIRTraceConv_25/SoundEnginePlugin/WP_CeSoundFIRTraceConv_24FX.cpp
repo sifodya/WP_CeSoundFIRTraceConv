@@ -80,45 +80,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
         m_testFIR.emplace_back(x);
     }
 	
-#if TESTING
-    std::fstream fileResult("C:\\Users\\cedri\\Desktop\\ComplexResult.csv");
-    CsVector2C expectedResult;
-    std::string line;
-    while (std::getline(fileResult, line)) {
-
-        std::stringstream ss(line);
-
-        std::string cell;
-
-        std::vector<CsC> row;
-
-        while (std::getline(ss, cell, ',')) {
-            row.push_back(parseComplex(cell));
-        }
-
-        expectedResult.push_back(row);
-    }
-
-    file.close();
-    fileResult.close();
-#endif
     initialiseFDLWithFilter(m_testFIR);
-
-#if TESTING
-	_ASSERT_EXPR(expectedResult.size() == m_FDL_H.size(), L"Expected result size does not match FDL_H size");
-
-    float tolerance = 1e-5f;
-
-    for (auto i{ 0 }; i < expectedResult.size(); i++)
-    {
-        _ASSERT_EXPR(m_FDL_H[i].size() == expectedResult[i].size(), L"Col mismatch");
-        for (auto j{ 0 }; j < expectedResult[i].size(); j++)
-        {
-            _ASSERT_EXPR(std::abs(expectedResult[i][j].real() - m_FDL_H[i][j].real()) < tolerance, L"Real part mismatch");
-            _ASSERT_EXPR(std::abs(expectedResult[i][j].imag() - m_FDL_H[i][j].imag()) < tolerance, L"Imaginary part mismatch");
-        }
-    }
-#endif
     
 	//m_testFIR.resize(24000, 1.0f);
 	AkChannelConfig channelConfig;
@@ -156,6 +118,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::GetPluginInfo(AkPluginInfo& out_rPluginInf
 
 void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in_ulnOffset, AkAudioBuffer* out_pBuffer)
 {
+    OutputDebugStringW(L"Execute\n");
 #if LIVE
     //Unit Test and assertions
     AkUInt32 dataSize{ 0 };
@@ -182,70 +145,128 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
 #endif
     const AkUInt32 uNumChannels = in_pBuffer->NumChannels();
 
-    
- 
     AkUInt16 uFramesConsumed;
     AkUInt16 uFramesProduced;
-    for (AkUInt32 i = 0; i < uNumChannels; ++i)
+
+    if (in_pBuffer->eState == AK_NoMoreData)
     {
-		m_currentChannel = i;
-
-		std::wstring msg = L"Processing Channel: " + std::to_wstring(i) + L"\n";
-		OutputDebugStringW(msg.c_str());
-        if(!m_FDL_XInitialised)
+        //OutputDebugStringW(L"Processing Tail\n");
+        static bool onlyOnce{ false };
+        if (!onlyOnce)
         {
-            m_FDL_XInitialised = true;
-            m_FDL_X.resize(uNumChannels, CsVector2C(m_FDL_H.size(), CsVectorC(m_bufferSize + 1, CsC(0.0, 0.0))));
-			m_UPOLSInput.resize(uNumChannels, CsVector(0));
-		}
+            AkReal32* AK_RESTRICT pInBuf = (AkReal32 * AK_RESTRICT)in_pBuffer->GetChannel(0) + in_ulnOffset;
+            AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(0) + out_pBuffer->uValidFrames;
 
-        AkReal32* AK_RESTRICT pInBuf = (AkReal32 * AK_RESTRICT)in_pBuffer->GetChannel(i) + in_ulnOffset;
-        AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(i) + out_pBuffer->uValidFrames;
-
-		//m_bufferSize = in_pBuffer->MaxFrames();
-        uFramesConsumed = 0;
-        uFramesProduced = 0;
-        while (uFramesConsumed < in_pBuffer->uValidFrames
-            && uFramesProduced < out_pBuffer->MaxFrames())
-        {
+            uFramesConsumed = 0;
+            uFramesProduced = 0;
             while (uFramesConsumed < in_pBuffer->MaxFrames() && uFramesConsumed < 2 * m_bufferSize)
             {
-                //m_UPOLSInput.push_back(*pInBuf++);
-                m_UPOLSInput[m_currentChannel].emplace_back(*pInBuf++);
-			    ++uFramesConsumed;
+                m_UPOLSInput[0].emplace_back(*pInBuf++);
+                ++uFramesConsumed;
             }
-            //Check length of InputBuffer -> needs 2B lenght
-            if (m_UPOLSInput[m_currentChannel].size() == 2 * m_bufferSize)
+            CsVector output;
+            output = UPOLS(m_UPOLSInput[0]);
+            for (auto& sample : output)
             {
-				/*auto maxElem = std::max_element(m_UPOLSInput[m_currentChannel].begin(), m_UPOLSInput[m_currentChannel].end());
-				std::wstring msg = L"Max element m_UPOLSInput: " + std::to_wstring(*maxElem) + L"\n";
-				OutputDebugStringW(msg.c_str());*/
-                //OutputDebugStringW(L"Processing Block\n");
-                CsVector output;
-                output = UPOLS(m_UPOLSInput[m_currentChannel]);
-                appendVectorText(m_filename, output);
-                for(auto &sample : output)
-                {
-					*pOutBuf++ = sample;
-					++uFramesProduced;
-				}
-                /*while (uFramesProduced < out_pBuffer->MaxFrames())
-                {
-                    *pOutBuf++ = output[0];
-                    ++uFramesProduced;
-                }*/
-                
-
-                //m_UPOLSInput.clear();                 
-				m_UPOLSInput[m_currentChannel].erase(m_UPOLSInput[m_currentChannel].begin(), m_UPOLSInput[m_currentChannel].begin() + m_bufferSize);
-                m_UPOLSInput[m_currentChannel].shrink_to_fit();
-
-                //OutputDebugStringW(L"Block Processed\n");
+                *pOutBuf++ = sample;
+                ++uFramesProduced;
             }
-            else
+            
+            onlyOnce = true;
+            out_pBuffer->eState = AK_DataReady;
+            out_pBuffer->uValidFrames = out_pBuffer->MaxFrames();
+            return;
+        }
+        if (m_FDL_X[m_currentChannel].size() == 1)
+        {
+
+            convoluteSignals();
+            CsVector output;
+            AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(0) + out_pBuffer->uValidFrames;
+            output = sumFDL();
+            for  (auto & sample : output)
+                *pOutBuf++ = sample;
+            out_pBuffer->eState = AK_NoMoreData;
+            out_pBuffer->uValidFrames = out_pBuffer->MaxFrames();
+            return;
+        }
+        //move FDL
+		CsVectorC zeros(m_bufferSize + 1, CsC(0.0, 0.0));
+        m_FDL_X[m_currentChannel].insert(m_FDL_X[m_currentChannel].begin(), zeros);
+
+        if (m_FDL_X[m_currentChannel].size() > m_FDL_H.size())
+        {
+            m_FDL_X[m_currentChannel].pop_back();
+        }
+        //Pop Front of H and X
+        m_FDL_X[m_currentChannel].erase(m_FDL_X[m_currentChannel].begin(), m_FDL_X[m_currentChannel].begin() + 1);
+		m_FDL_H.erase(m_FDL_H.begin(), m_FDL_H.begin() + 1);
+        //Conv
+		convoluteSignals();
+        //Output
+		CsVector output;
+        AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(0) + out_pBuffer->uValidFrames;
+        output = sumFDL();
+        for (auto& sample : output)
+            *pOutBuf++ = sample;
+        out_pBuffer->eState = AK_DataReady;
+        out_pBuffer->uValidFrames += output.size();
+		return;
+    }
+
+    if(in_pBuffer->eState != AK_NoMoreData)
+    {
+        for (AkUInt32 i = 0; i < uNumChannels; ++i)
+        {
+            m_currentChannel = i;
+
+            std::wstring msg = L"Processing Channel: " + std::to_wstring(i) + L"\n";
+            OutputDebugStringW(msg.c_str());
+            if (!m_FDL_XInitialised)
             {
-				OutputDebugStringW(L"Not enough data to process\n");
-                continue;
+                m_FDL_XInitialised = true;
+                m_FDL_X.resize(uNumChannels);// , CsVector2C(m_FDL_H.size(), CsVectorC(m_bufferSize + 1, CsC(0.0, 0.0))));
+                m_UPOLSInput.resize(uNumChannels, CsVector(0));
+            }
+
+            AkReal32* AK_RESTRICT pInBuf = (AkReal32 * AK_RESTRICT)in_pBuffer->GetChannel(i) + in_ulnOffset;
+            AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(i) + out_pBuffer->uValidFrames;
+
+            //m_bufferSize = in_pBuffer->MaxFrames();
+            uFramesConsumed = 0;
+            uFramesProduced = 0;
+
+            while (uFramesConsumed < in_pBuffer->uValidFrames
+                && uFramesProduced < out_pBuffer->MaxFrames())
+            {
+                while (uFramesConsumed < in_pBuffer->MaxFrames() && uFramesConsumed < 2 * m_bufferSize)
+                {
+                    //m_UPOLSInput.push_back(*pInBuf++);
+                    m_UPOLSInput[m_currentChannel].emplace_back(*pInBuf++);
+                    ++uFramesConsumed;
+                }
+                //Check length of InputBuffer -> needs 2B lenght
+                if (m_UPOLSInput[m_currentChannel].size() == 2 * m_bufferSize)
+                {
+                    //OutputDebugStringW(L"Processing Block\n");
+                    CsVector output;
+                    output = UPOLS(m_UPOLSInput[m_currentChannel]);
+                    for (auto& sample : output)
+                    {
+                        *pOutBuf++ = sample;
+                        ++uFramesProduced;
+                    }
+
+                    m_UPOLSInput[m_currentChannel].erase(m_UPOLSInput[m_currentChannel].begin(), m_UPOLSInput[m_currentChannel].begin() + m_bufferSize);
+                    m_UPOLSInput[m_currentChannel].shrink_to_fit();
+
+                    //OutputDebugStringW(L"Block Processed\n");
+                }
+                else
+                {
+                    OutputDebugStringW(L"Not enough data to process\n");
+                    continue;
+                }
             }
         }
     }
@@ -253,9 +274,26 @@ void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in
     in_pBuffer->uValidFrames -= uFramesConsumed;
     out_pBuffer->uValidFrames += uFramesProduced;
 
-    if (in_pBuffer->eState == AK_NoMoreData && in_pBuffer->uValidFrames == 0)
+    /*if (in_pBuffer->eState == AK_NoMoreData && in_pBuffer->uValidFrames == 0)
+    {
+        if(m_FDL_X[m_currentChannel].size() > 0)
+        {
+            //OutputDebugStringW(L"PROCESSING TAIL\n");
+            out_pBuffer->eState = AK_DataReady;
+            AkReal32* AK_RESTRICT pOutBuf = (AkReal32 * AK_RESTRICT)out_pBuffer->GetChannel(m_currentChannel) + out_pBuffer->uValidFrames;
+			AkUInt16 tailFramesProduced{ 0 };
+            for (auto &sample : m_UPOLSInput[m_currentChannel])
+            {
+				*pOutBuf++ = sample;
+				++tailFramesProduced;
+			}
+			out_pBuffer->uValidFrames += tailFramesProduced;
+            m_processTail = true;
+		}
+        else
         out_pBuffer->eState = AK_NoMoreData;
-    else if (out_pBuffer->uValidFrames == out_pBuffer->MaxFrames())
+    }
+    else*/ if (out_pBuffer->uValidFrames == out_pBuffer->MaxFrames())
         out_pBuffer->eState = AK_DataReady;
     else
         out_pBuffer->eState = AK_DataNeeded;
@@ -587,85 +625,4 @@ std::vector<float> WP_CeSoundFIRTraceConv_24FX::linearConvolution(const CsVector
         }
 	}
 	return output;
-}
-
-CsC WP_CeSoundFIRTraceConv_24FX::parseComplex(const std::string& s)
-{
-    // Find separator between real and imaginary part
-    //size_t plusPos = s.find('+');
-    //size_t minusPos = s.find('-', 1);
-
-    //size_t splitPos;
-
-    //if (plusPos != std::string::npos)
-    //    splitPos = plusPos;
-    //else
-    //    splitPos = minusPos;
-
-    //float real = std::stof(s.substr(0, splitPos));
-
-    //std::string imagStr = s.substr(splitPos);
-
-    //// Remove trailing 'i'
-    //imagStr.pop_back();
-
-    //float imag = std::stof(imagStr);
-
-    //return CsC(real, imag);
-    std::stringstream ss(s);
-    float real = 0.0f;
-    float imag = 0.0f;
-    char sign = '+';
-    char i_char = '\0';
-
-    // 1. Read the real part
-    if (!(ss >> real)) {
-        // Handle error: couldn't read real number
-    }
-
-    // 2. Read the operator ('+' or '-')
-    // If the next thing is 'i', it means there was no real part (e.g., "4i" or "-4i")
-    // This stream approach assumes standard "a + bi" or "a - bi" format.
-    ss >> sign;
-
-    if (sign == '+' || sign == '-') {
-        // 3. Read the imaginary magnitude
-        if (ss >> imag) {
-            // Read the trailing 'i'
-            ss >> i_char;
-        }
-        else {
-            // Edge case: string was "3 + i" or "3 - i", meaning imag is 1 or -1
-            ss.clear();
-            ss >> i_char; // try to read the 'i'
-            imag = 1.0f;
-        }
-
-        if (sign == '-') {
-            imag = -imag;
-        }
-    }
-    else if (sign == 'i') {
-        // Pure imaginary number format like "3.0i" (real was parsed as 3.0, but it was actually imag)
-        imag = real;
-        real = 0.0f;
-    }
-
-    return CsC(real, imag);
-}
-
-void WP_CeSoundFIRTraceConv_24FX::appendVectorText(const std::string& filename, const std::vector<float>& vec) {
-    // Open in standard text append mode
-    std::ofstream outFile(filename, std::ios::app);
-
-    if (!outFile) {
-        std::cerr << "Error opening file for writing!" << std::endl;
-        return;
-    }
-
-    // Write elements separated by spaces, and a newline at the end of the vector
-    for (float val : vec) {
-        outFile << val << " ";
-    }
-    outFile << "\n";
 }
