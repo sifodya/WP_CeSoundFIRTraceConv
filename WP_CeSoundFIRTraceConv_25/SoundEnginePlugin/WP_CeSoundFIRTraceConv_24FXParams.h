@@ -37,7 +37,7 @@ static const AkUInt32 NUM_PARAMS = 1;
 
 struct WP_CeSoundFIRTraceConv_24RTPCParams
 {
-    AkReal32 stretch;
+    AkReal32 fstretch;
 
 };
 

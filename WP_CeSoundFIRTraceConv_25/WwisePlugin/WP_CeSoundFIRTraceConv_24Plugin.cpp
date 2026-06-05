@@ -38,7 +38,7 @@ WP_CeSoundFIRTraceConv_24Plugin::~WP_CeSoundFIRTraceConv_24Plugin()
 bool WP_CeSoundFIRTraceConv_24Plugin::GetBankParameters(const GUID & in_guidPlatform, AK::Wwise::Plugin::DataWriter& in_dataWriter) const
 {
     // Write bank data here
-    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "stretch"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "Stretch"));
 
     return true;
 }

@@ -8,5 +8,5 @@ public:
 
 	std::vector<float> T60;
 
-	INT32 version;
+	signed int version;
 };

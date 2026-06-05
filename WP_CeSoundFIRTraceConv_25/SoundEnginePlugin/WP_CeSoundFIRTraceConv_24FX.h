@@ -28,6 +28,7 @@ the specific language governing permissions and limitations under the License.
 #define WP_CeSoundFIRTraceConv_24FX_H
 
 #include "pocketfft-cpp/pocketfft_hdronly.h"
+#include "Dr_wav/dr_wav.h"
 
 #include "WP_CeSoundFIRTraceConv_24FXParams.h"
 #include "UEDataStruct.h"
@@ -58,7 +59,36 @@ public:
 
     //=================================================================================
 
-    
+    enum class CeFreq
+    {
+        Hz63, Hz128, Hz250, Hz500, Hz1000, Hz2000, Hz4000, Hz8000
+    };
+
+    // My variables
+    AkUInt16 m_bufferSize{ 512 };
+    const double m_pi{ std::acos(-1.0) };
+    const CsC m_minus_i{ (0, -1) };
+    bool m_filterExRunning{ false };
+    bool m_FDL_XInitialised{ false };
+    bool m_FDL_HInitialised{ false };
+    bool m_processTail{ false };
+    INT32 m_dataVersion{ -1 };
+    void* m_vpGameData = nullptr;
+    unsigned int m_currentChannel{ 0 };
+	int m_currentSampleRate{ 0 };
+
+    CsVector2 m_UPOLSInput;
+
+    CsVector m_testFIR;
+
+    std::vector<CsVector2> m_linConvOverflow;
+
+    // FDL variables
+    //CsVector m_FDLBuffer;
+    CsVector2C m_FDL_H;
+    CsVector2C m_FDL_Htemp;
+    CsVector3C m_FDL_X;
+    CsVector2C m_FDL_Result;
 
     //=================================================================================
 
@@ -87,8 +117,6 @@ public:
     /// Return AK_DataReady or AK_NoMoreData, depending if there would be audio output or not at that point.
     AKRESULT TimeSkip(AkUInt32 &io_uFrames) override;
 
-    //void SetCustomData(const UEDataStruct& filterData);
-
 private:
 	// My functions
 	void defaultExecute(AkAudioBuffer* in_pBuffer, AkUInt32 in_ulnOffset, AkAudioBuffer* out_pBuffer);
@@ -97,15 +125,14 @@ private:
     /// </summary>
     /// <param name="FIR">Pointer to the first element of the impulse response (FIR) buffer to partition.</param>
     /// <returns>A CsVector2 containing the partitioning result (for example, partition sizes or offsets). The exact interpretation depends on the implementation.</returns>
-    CsVector2 partitioningIR(const CsVector2& FIR);
-    CsVector2 partitioningIR_single(const CsVector& FIR);
+    void partitioningAndWriteFilterToTemp(const CsVector& FIR);
 
     /// <summary>
     /// Combines multiple FIR passes into a single CsVector.
     /// </summary>
     /// <param name="FIR">Pointer to the first CsVector2 in an array or sequence of FIR passes to be combined.</param>
     /// <returns>A CsVector containing the combined FIR result.</returns>
-    CsVector combineFIRPasses(const CsVector2& FIR);
+    CsVector combineFIRPasses(CsVector2& FIR);
     /// <summary>
     /// Performs the GUPOLS operation.
     /// </summary>
@@ -119,7 +146,7 @@ private:
     /// <summary>
     /// Performs a filter exchange operation.
     /// </summary>
-    void filterExchange();
+    CsVector filterExchange( CsVector h);
     /// <summary>
     /// Creates a CsVector from a buffer of AkReal32 samples, formatted for FDL usage.
     /// </summary>
@@ -152,8 +179,139 @@ private:
     //void initialiseAndUpdateFilter(const CsVector2& filter);
 
 
-	std::vector<float> linearConvolution(const std::vector<float>& input, const CsVector& filter);
+    std::vector<float> linearConvolution(const std::vector<float>& input, const CsVector& filter)
+    {
+        size_t N = input.size();
+        size_t M = filter.size();
+        std::vector<float> output(N + M - 1, 0.0f);
+        for (size_t n{ 0 }; n < output.size(); n++)
+        {
+            for (size_t m{ 0 }; m < M; m++)
+            {
+                if (n >= m && n - m < N)
+                {
+                    output[n] += input[n - m] * filter[m];
+                }
+            }
+        }
+        return output;
+    };
 
+    std::vector<float> sinc(CeFreq f, int N, int Fs)
+    {
+        float frequency = 0.0f;
+        switch (f)
+        {
+        case CeFreq::Hz63:
+            frequency = 63.0f;
+            break;
+        case CeFreq::Hz128:
+            frequency = 128.0f;
+            break;
+        case CeFreq::Hz250:
+            frequency = 250.0f;
+            break;
+        case CeFreq::Hz500:
+            frequency = 500.0f;
+            break;
+        case CeFreq::Hz1000:
+            frequency = 1000.0f;
+            break;
+        case CeFreq::Hz2000:
+            frequency = 2000.0f;
+            break;
+        case CeFreq::Hz4000:
+            frequency = 4000.0f;
+            break;
+        case CeFreq::Hz8000:
+            frequency = 8000.0f;
+            break;
+        }
+        auto M = (N - 1) / 2;
+        auto fc = frequency / static_cast<float>(Fs);
+        std::vector<float> h(N, 0.0f);
+        std::vector<float> window(N, 0.0f);
+        float a0 = 0.42f;
+        float a1 = 0.5f;
+        float a2 = 0.08f;
+        for (size_t n{ 0 }; n < N; n++)
+        {
+            window[n] = a0 - a1 * std::cos((2 * m_pi * n) / N) + a2 * std::cos((4 * m_pi * n) / N);
+        };
+        for (size_t n{ 1 }; n <= N; n++)
+        {
+            h[n-1] = (std::sin(2 * m_pi * fc * (n - M / 2)) / (m_pi * (n - M / 2))) * window[n-1];
+        }
+        return h;
+    }
+
+    std::vector<float> sinc(CeFreq f, int Fs)
+    {
+        auto N = 4000;
+        float frequency = 0.0f;
+        switch (f)
+        {
+        case CeFreq::Hz63:
+            frequency = 63.0f;
+            break;
+        case CeFreq::Hz128:
+            frequency = 128.0f;
+            break;
+        case CeFreq::Hz250:
+            frequency = 250.0f;
+            break;
+        case CeFreq::Hz500:
+            frequency = 500.0f;
+            break;
+        case CeFreq::Hz1000:
+            frequency = 1000.0f;
+            break;
+        case CeFreq::Hz2000:
+            frequency = 2000.0f;
+            break;
+        case CeFreq::Hz4000:
+            frequency = 4000.0f;
+            break;
+        case CeFreq::Hz8000:
+            frequency = 8000.0f;
+            break;
+        }
+        auto M = (N - 1) / 2;
+        auto fc = frequency / static_cast<float>(Fs);
+        std::vector<float> h(N, 0.0f);
+        std::vector<float> window(N, 0.0f);
+        float a0 = 0.42f;
+        float a1 = 0.5f;
+        float a2 = 0.08f;
+        for (size_t n{ 0 }; n < N; n++)
+        {
+            window[n] = a0 - a1 * std::cos((2 * m_pi * n) / N) + a2 * std::cos((4 * m_pi * n) / N);
+        };
+        for (size_t n{ 1 }; n <= N; n++)
+        {
+            h[n - 1] = (std::sin(2 * m_pi * fc * (n - M / 2)) / (m_pi * (n - M / 2))) * window[n - 1];
+        }
+        return h;
+    }
+
+    std::vector<float> normaliseEnergy (std::vector<float> & FIR)
+    {
+        float energy = 0.0f;
+        for (const auto& sample : FIR)
+        {
+			if (sample != 0.0f)
+            energy += sample * sample;
+        }
+        float normFactor = std::sqrt(energy);
+        if (normFactor > 0.0f)
+        {
+            for (auto& sample : FIR)
+            {
+                sample /= normFactor;
+            }
+        }
+        return FIR;
+	}
     //==================================================================================
     // Wwise variables
     WP_CeSoundFIRTraceConv_24FXParams* m_pParams;
@@ -162,34 +320,9 @@ private:
     //From execute function
 
     //==================================================================================
-	// My variables
-    AkUInt16 m_bufferSize { 512 };
-    const double m_pi{ std::acos(-1.0) };
-    const CsC m_minus_i{ (0, -1) };
-    bool m_filterExRunning{ false };
-	bool m_FDL_XInitialised{ false };
-	bool m_processTail{ false };
-    INT32 m_dataVersion{ -1 };
-    void* m_vpGameData = nullptr;
-	unsigned int m_currentChannel{ 0 };
+	
 
-    CsVector2 m_UPOLSInput;
-
-    CsVector m_testFIR;
     
-    std::vector<CsVector2> m_linConvOverflow;
-
-	// FDL variables
-    //CsVector m_FDLBuffer;
-    CsVector2C m_FDL_H;
-    CsVector2C m_FDL_Htemp;
-    CsVector3C m_FDL_X;
-    CsVector2C m_FDL_Result;
-
-    enum CeConv
-    {
-        CECONV_SUCESS, CECONV_FAILURE, CECONV_DATANEEDED, CECONV_WORKING, CECONV_UPDATEINPUT
-    };
     
 };
 
