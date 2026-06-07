@@ -54,6 +54,24 @@ AKRESULT WP_CeSoundFIRTraceConv_24FXParams::Init(AK::IAkPluginMemAlloc* in_pAllo
     {
         // Initialize default parameters here
         RTPC.fstretch = 0.0f;
+        RTPC.fdecay = 0.0f;
+        RTPC.breverse = false;
+        RTPC.fattack = 20.0f;
+        RTPC.flpCo = 20.0f;
+        RTPC.flpQ = 20.0f;
+        RTPC.flpDb = 20.0f;
+        RTPC.fhpCo = 20.0f;
+        RTPC.fhpQ = 20.0f;
+        RTPC.fhpDb = 20.0f;
+        RTPC.fp1Co = 20.0f;
+        RTPC.fp1Q = 20.0f;
+        RTPC.fp1Db = 20.0f;
+        RTPC.fp2Co = 20.0f;
+        RTPC.fp2Q = 20.0f;
+        RTPC.fp2Db = 20.0f;
+        RTPC.ffreqHigh = 20.0f;
+        RTPC.ffreqLow = 20.0f;
+        RTPC.ifirSelect = 0;
         
         m_paramChangeHandler.SetAllParamChanges();
         return AK_Success;
@@ -75,6 +93,24 @@ AKRESULT WP_CeSoundFIRTraceConv_24FXParams::SetParamsBlock(const void* in_pParam
 
     // Read bank data here
     RTPC.fstretch = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.fdecay = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.breverse = READBANKDATA(bool, pParamsBlock, in_ulBlockSize);
+    RTPC.fattack = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.flpCo = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.flpQ = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.flpDb = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.fhpCo = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.fhpQ = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.fhpDb = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.fp1Co = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.fp1Q = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.fp1Db = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.fp2Co = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.fp2Q = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.fp2Db = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.ffreqHigh = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.ffreqLow = READBANKDATA(AkReal32, pParamsBlock, in_ulBlockSize);
+    RTPC.ifirSelect = READBANKDATA(AkInt32, pParamsBlock, in_ulBlockSize);
     CHECKBANKDATASIZE(in_ulBlockSize, eResult);
     m_paramChangeHandler.SetAllParamChanges();
 
@@ -92,6 +128,77 @@ AKRESULT WP_CeSoundFIRTraceConv_24FXParams::SetParam(AkPluginParamID in_paramID,
         RTPC.fstretch = *((AkReal32*)in_pValue);
         m_paramChangeHandler.SetParamChange(PARAM_STRETCH_ID);
         break;
+    case PARAM_DECAY_ID:
+        RTPC.fdecay = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_DECAY_ID);
+        break;
+    case PARAM_REVERSE_ID:
+        RTPC.breverse = *((bool*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_REVERSE_ID);
+        break;
+    case PARAM_LPCO_ID:
+        RTPC.flpCo = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_LPCO_ID);
+        break;
+    case PARAM_LPQ_ID:
+        RTPC.flpQ = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_LPQ_ID);
+        break;
+    case PARAM_LPDB_ID:
+        RTPC.flpDb = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_LPDB_ID);
+        break;
+    case PARAM_HPCO_ID:
+        RTPC.fhpCo = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_HPCO_ID);
+        break;
+    case PARAM_HPQ_ID:
+        RTPC.fhpQ = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_HPQ_ID);
+        break;
+    case PARAM_HPDB_ID:
+        RTPC.fhpDb = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_HPDB_ID);
+        break;
+    case PARAM_P1CO_ID:
+        RTPC.fp1Co = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_P1CO_ID);
+        break;
+    case PARAM_P1Q_ID:
+        RTPC.fp1Q = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_P1Q_ID);
+        break;
+    case PARAM_P1DB_ID:
+        RTPC.fp1Db = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_P1DB_ID);
+        break;
+    case PARAM_P2CO_ID:
+        RTPC.fp2Co = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_P2CO_ID);
+        break;
+    case PARAM_P2Q_ID:
+        RTPC.fp2Q = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_P2Q_ID);
+        break;
+    case PARAM_P2DB_ID:
+        RTPC.fp2Db = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_P2DB_ID);
+        break;
+    case PARAM_FREQHIGH_ID:
+        RTPC.ffreqHigh = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_FREQHIGH_ID);
+        break;
+    case PARAM_FREQLOW_ID:
+        RTPC.ffreqLow = *((AkReal32*)in_pValue);
+        m_paramChangeHandler.SetParamChange(PARAM_FREQLOW_ID);
+        break;
+    case PARAM_FIRSELECT_ID:
+    {
+        RTPC.ifirSelect = static_cast<AkInt32>(*((AkReal32*)in_pValue));
+        m_paramChangeHandler.SetParamChange(PARAM_FIRSELECT_ID);
+
+        break;
+    }
     default:
         eResult = AK_InvalidParameter;
         break;

@@ -3,8 +3,8 @@
 // Used by WP_CeSoundFIRTraceConv_24.rc
 //
 #define IDD_DIALOG                      9
-#define IDC_GAIN_SLIDER                 1001
-#define IDC_NUM                         1019
+#define IDC_FIR_COMBO                   1001
+#define IDC_GAIN_SLIDER                 1003
 #define IDC_SAMPLES                     1020
 
 // Next default values for new objects

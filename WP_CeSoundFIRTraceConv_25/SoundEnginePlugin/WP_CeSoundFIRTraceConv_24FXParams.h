@@ -33,12 +33,46 @@ the specific language governing permissions and limitations under the License.
 // Add parameters IDs here, those IDs should map to the AudioEnginePropertyID
 // attributes in the xml property definition.
 static const AkPluginParamID PARAM_STRETCH_ID = 0;
-static const AkUInt32 NUM_PARAMS = 1;
+static const AkPluginParamID PARAM_DECAY_ID = 1;
+static const AkPluginParamID PARAM_REVERSE_ID = 2;
+static const AkPluginParamID PARAM_LPCO_ID = 3;
+static const AkPluginParamID PARAM_LPQ_ID = 4;
+static const AkPluginParamID PARAM_LPDB_ID = 5;
+static const AkPluginParamID PARAM_HPCO_ID = 6;
+static const AkPluginParamID PARAM_HPQ_ID = 7;
+static const AkPluginParamID PARAM_HPDB_ID = 8;
+static const AkPluginParamID PARAM_P1CO_ID = 9;
+static const AkPluginParamID PARAM_P1Q_ID = 10;
+static const AkPluginParamID PARAM_P1DB_ID = 11;
+static const AkPluginParamID PARAM_P2CO_ID = 12;
+static const AkPluginParamID PARAM_P2Q_ID = 13;
+static const AkPluginParamID PARAM_P2DB_ID = 14;
+static const AkPluginParamID PARAM_FREQHIGH_ID = 15;
+static const AkPluginParamID PARAM_FREQLOW_ID = 16;
+static const AkPluginParamID PARAM_FIRSELECT_ID = 17;
+static const AkUInt32 NUM_PARAMS = 18;
 
 struct WP_CeSoundFIRTraceConv_24RTPCParams
 {
     AkReal32 fstretch;
-
+    AkReal32 fdecay;
+    bool breverse;
+    AkReal32 fattack;
+    AkReal32 flpCo;
+    AkReal32 flpQ;
+    AkReal32 flpDb;
+    AkReal32 fhpCo;
+    AkReal32 fhpQ;
+    AkReal32 fhpDb;
+    AkReal32 fp1Co;
+    AkReal32 fp1Q;
+    AkReal32 fp1Db;
+    AkReal32 fp2Co;
+    AkReal32 fp2Q;
+    AkReal32 fp2Db;
+    AkReal32 ffreqHigh;
+    AkReal32 ffreqLow;
+    AkInt32 ifirSelect;
 };
 
 struct WP_CeSoundFIRTraceConv_24NonRTPCParams

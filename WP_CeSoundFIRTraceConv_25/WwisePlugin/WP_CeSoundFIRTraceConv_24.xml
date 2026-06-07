@@ -43,7 +43,7 @@ for the documentation about the plugin xml format
 	  <Properties>
 		  <!-- Add your property definitions here -->
 		  <Property Name="stretch" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Stretch">
-			  <UserInterface Step="0.1" Fine="0.001" Decimals="3" UIMax="10" />
+			  <UserInterface Step="0.1" Fine="0.001" Decimals="3" UIMin="0" UIMax="100" />
 			  <DefaultValue>0.0</DefaultValue>
 			  <AudioEnginePropertyID>0</AudioEnginePropertyID>
 			  <Restrictions>
@@ -89,7 +89,7 @@ for the documentation about the plugin xml format
 		  <Property Name="lpCo" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Low Pass Cutoff">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>4</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>3</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -102,7 +102,7 @@ for the documentation about the plugin xml format
 		  <Property Name="lpQ" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Low Pass Q">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>5</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>4</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -115,7 +115,7 @@ for the documentation about the plugin xml format
 		  <Property Name="lpDb" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Low Pass Gain">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>6</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>5</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -128,7 +128,7 @@ for the documentation about the plugin xml format
 		  <Property Name="hpCo" Type="Real32" SupportRTPCType="Exclusive" DisplayName="High Pass Cutoff">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>7</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>6</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -141,7 +141,7 @@ for the documentation about the plugin xml format
 		  <Property Name="hpQ" Type="Real32" SupportRTPCType="Exclusive" DisplayName="High Pass Q">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>8</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>7</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -154,7 +154,7 @@ for the documentation about the plugin xml format
 		  <Property Name="hpDb" Type="Real32" SupportRTPCType="Exclusive" DisplayName="High Pass Gain">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>9</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>8</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -167,7 +167,7 @@ for the documentation about the plugin xml format
 		  <Property Name="p1Co" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Peak 1 Cutoff">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>10</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>9</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -180,7 +180,7 @@ for the documentation about the plugin xml format
 		  <Property Name="p1Q" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Peak 1 Q">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>11</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>10</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -193,7 +193,7 @@ for the documentation about the plugin xml format
 		  <Property Name="p1Db" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Peak 1 Gain">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>12</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>11</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -206,7 +206,7 @@ for the documentation about the plugin xml format
 		  <Property Name="p2Co" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Peak 2 Cutoff">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>13</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>12</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -219,7 +219,7 @@ for the documentation about the plugin xml format
 		  <Property Name="p2Q" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Peak 2 Q">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>14</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>13</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -232,7 +232,7 @@ for the documentation about the plugin xml format
 		  <Property Name="p2Db" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Peak 2 Gain">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>15</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>14</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -245,7 +245,7 @@ for the documentation about the plugin xml format
 		  <Property Name="freqHigh" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Upper Frequency limit">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>16</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>15</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
@@ -258,13 +258,25 @@ for the documentation about the plugin xml format
 		  <Property Name="freqLow" Type="Real32" SupportRTPCType="Exclusive" DisplayName="Lower Frequency Limit">
 			  <UserInterface Step="0.1" Fine="0.01" Decimals="2" UIMax="10" />
 			  <DefaultValue>20.0</DefaultValue>
-			  <AudioEnginePropertyID>17</AudioEnginePropertyID>
+			  <AudioEnginePropertyID>16</AudioEnginePropertyID>
 			  <Restrictions>
 				  <ValueRestriction>
 					  <Range Type="Real32">
 						  <Min>0.0</Min>
 						  <Max>5000.0</Max>
 					  </Range>
+				  </ValueRestriction>
+			  </Restrictions>
+		  </Property>
+	  <Property Name="firSelect" Type="int32" SupportRTPCType="Exclusive" DisplayName="FIR Selected">
+			  <DefaultValue>0</DefaultValue>
+			  <AudioEnginePropertyID>17</AudioEnginePropertyID>
+			  <Restrictions>
+				  <ValueRestriction>
+					  <Enumeration Type="int32">
+						  <Value DisplayName ="Tracing">0</Value>
+						  <Value DisplayName ="FIR 1">1</Value>
+					  </Enumeration>
 				  </ValueRestriction>
 			  </Restrictions>
 		  </Property>

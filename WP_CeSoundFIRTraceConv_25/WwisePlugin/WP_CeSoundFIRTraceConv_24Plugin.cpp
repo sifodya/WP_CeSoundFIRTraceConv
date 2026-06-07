@@ -38,7 +38,25 @@ WP_CeSoundFIRTraceConv_24Plugin::~WP_CeSoundFIRTraceConv_24Plugin()
 bool WP_CeSoundFIRTraceConv_24Plugin::GetBankParameters(const GUID & in_guidPlatform, AK::Wwise::Plugin::DataWriter& in_dataWriter) const
 {
     // Write bank data here
-    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "Stretch"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "stretch"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "decay"));
+    in_dataWriter.WriteBool(m_propertySet.GetBool(in_guidPlatform, "reverse"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "attack"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "lpCo"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "lpQ"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "lpDb"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "hpCo"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "hpQ"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "hpDb"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "p1Co"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "p1Q"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "p1Db"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "p2Co"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "p2Q"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "p2Db"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "freqHigh"));
+    in_dataWriter.WriteReal32(m_propertySet.GetReal32(in_guidPlatform, "freqLow"));
+    in_dataWriter.WriteInt32(m_propertySet.GetInt32(in_guidPlatform, "firSelect"));
 
     return true;
 }

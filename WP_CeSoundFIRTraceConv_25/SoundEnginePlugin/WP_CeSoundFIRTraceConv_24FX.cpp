@@ -71,6 +71,10 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
     m_pContext = in_pContext;
     m_currentSampleRate = in_rFormat.uSampleRate;
     
+
+    int select = m_pParams->RTPC.ifirSelect;
+    std::wstring msg = L"FIR Select: " + std::to_wstring(select) + L"\n";
+    OutputDebugStringW(msg.c_str());
     OutputDebugStringW(L"Init\n");
 #if LIVE == 0
     std::fstream file("C:\\Users\\cedri\\Desktop\\output3.txt");
@@ -129,7 +133,13 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::GetPluginInfo(AkPluginInfo& out_rPluginInf
 
 void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in_ulnOffset, AkAudioBuffer* out_pBuffer)
 {
-    OutputDebugStringW(L"Execute\n");
+    //OutputDebugStringW(L"Execute\n");
+    if (m_pParams->m_paramChangeHandler.HasAnyChanged())
+    {
+        //select = m_pParams->RTPC.ifirSelect;
+        std::wstring msg = L"FIR Select: " + std::to_wstring(m_pParams->RTPC.ifirSelect) + L" Stretch: " + std::to_wstring(m_pParams->RTPC.fstretch) + L"\n";
+		OutputDebugStringW(msg.c_str());
+    }
 #if LIVE
 
     //Unit Test and assertions
