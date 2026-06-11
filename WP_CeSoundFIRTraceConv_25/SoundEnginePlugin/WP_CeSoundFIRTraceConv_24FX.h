@@ -80,6 +80,7 @@ public:
     CsVector2 m_UPOLSInput;
 
     CsVector m_testFIR;
+    CsVector2 m_meldaFIR;
 
     std::vector<CsVector2> m_linConvOverflow;
 
