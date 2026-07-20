@@ -56,7 +56,7 @@ AKRESULT WP_CeSoundFIRTraceConv_24FXParams::Init(AK::IAkPluginMemAlloc* in_pAllo
         RTPC.fstretch = 0.0f;
         RTPC.fdecay = 0.0f;
         RTPC.breverse = false;
-        RTPC.fattack = 20.0f;
+        RTPC.fattack = 0.0f;
         RTPC.flpCo = 20.0f;
         RTPC.flpQ = 1.0f;
         RTPC.flpDb = 0.0f;

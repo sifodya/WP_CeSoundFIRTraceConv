@@ -28,6 +28,7 @@ the specific language governing permissions and limitations under the License.
 #define WP_CeSoundFIRTraceConv_24FX_H
 
 #include "pocketfft-cpp/pocketfft_hdronly.h"
+#define DR_WAV_IMPLEMENTATION
 #include "Dr_wav/dr_wav.h"
 
 #include "WP_CeSoundFIRTraceConv_24FXParams.h"
@@ -81,6 +82,19 @@ public:
 
     CsVector m_testFIR;
     CsVector2 m_meldaFIR;
+    std::vector<std::string> filePaths{ 
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\Bottle Hall.wav", //Kirche
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\In The Silo.wav", //Kirche Eingang
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\Five Columns Long.wav", //Aussen 1
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\Narrow Bumpy Space.wav", //Treppe
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\Small Drum Room.wav", //Hauskanal
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\St Nicolaes Church.wav", //Kreuzung
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\Masonic Lodge.wav", //Werk Eingang gross
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\Musikvereinsaal.wav", //Werk
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\On a Star.wav", //Werk Unterholz
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\Five Columns.wav", //Werk Eingang klein
+        "C:\\Users\\cedri\\Downloads\\IMreverbs\\Direct Cabinet N2.wav" //Aussen 2
+    };
 
     std::vector<CsVector2> m_linConvOverflow;
 

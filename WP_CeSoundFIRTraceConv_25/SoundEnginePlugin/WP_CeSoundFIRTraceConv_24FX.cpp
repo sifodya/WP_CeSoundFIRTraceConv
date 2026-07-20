@@ -33,7 +33,7 @@ the specific language governing permissions and limitations under the License.
 #include <crtdbg.h>
 //#include <afx.h>
 #define TESTING 0
-#define LIVE 0
+#define LIVE 1
 
 AK::IAkPlugin* CreateWP_CeSoundFIRTraceConv_24FX(AK::IAkPluginMemAlloc* in_pAllocator)
 {
@@ -77,7 +77,29 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
     OutputDebugStringW(msg.c_str());
     OutputDebugStringW(L"Init\n");
 #if LIVE == 0
-    std::fstream file("C:\\Users\\cedri\\Desktop\\output3.txt");
+    m_meldaFIR.resize(filePaths.size());
+	for (size_t i = 0; i < filePaths.size(); i++)
+    {
+		const char* filePath = filePaths[i].c_str();
+        AkUInt32 channels;
+        AkUInt32 sampleRate;
+        drwav_uint64 totalPCMFrameCount;
+        float* pSamples = drwav_open_file_and_read_pcm_frames_f32(filePath, &channels, &sampleRate, &totalPCMFrameCount, nullptr);
+
+        m_meldaFIR[i].reserve(static_cast<size_t>(totalPCMFrameCount));
+
+        for (drwav_uint64 frame = 0; frame < totalPCMFrameCount; ++frame) {
+            m_meldaFIR[i].push_back(
+                pSamples[frame * channels]
+            );
+        }
+
+        drwav_free(pSamples, nullptr);
+    }
+  
+	initialiseFDLWithFilter(m_meldaFIR[0]);
+
+    /*std::fstream file("C:\\Users\\cedri\\Desktop\\output3.txt");
     
     double x;
     while (file >> x)
@@ -85,18 +107,10 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::Init(AK::IAkPluginMemAlloc* in_pAllocator,
         m_testFIR.emplace_back(x);
     }
     m_testFIR = normaliseEnergy(m_testFIR);
-    /*float E{0.0f};
-    for (auto& sample : m_testFIR)
-    {
-        E += sample * sample;
-	}
-    for (auto i = 0; i < m_testFIR.size(); ++i)
-    {
-        m_testFIR[i] /= sqrt(E);
-	}*/
+    
     initialiseFDLWithFilter(m_testFIR);
     
-	//m_testFIR.resize(24000, 1.0f);
+	//m_testFIR.resize(24000, 1.0f);*/
 #endif
 	AkChannelConfig channelConfig;
     m_pContext->GetParentChannelConfig(channelConfig);
@@ -133,13 +147,17 @@ AKRESULT WP_CeSoundFIRTraceConv_24FX::GetPluginInfo(AkPluginInfo& out_rPluginInf
 
 void WP_CeSoundFIRTraceConv_24FX::Execute(AkAudioBuffer* in_pBuffer, AkUInt32 in_ulnOffset, AkAudioBuffer* out_pBuffer)
 {
-    //OutputDebugStringW(L"Execute\n");
-    if (m_pParams->m_paramChangeHandler.HasAnyChanged())
+#if LIVE == 0
+    OutputDebugStringW(L"Execute\n");
+    if (m_pParams->m_paramChangeHandler.HasChanged(PARAM_FIRSELECT_ID))
     {
         //select = m_pParams->RTPC.ifirSelect;
-        std::wstring msg = L"FIR Select: " + std::to_wstring(m_pParams->RTPC.ifirSelect) + L" Stretch: " + std::to_wstring(m_pParams->RTPC.fstretch) + L"\n";
+        std::wstring msg = L"FIR Select: " + std::to_wstring(m_pParams->RTPC.ifirSelect);
 		OutputDebugStringW(msg.c_str());
+        partitioningAndWriteFilterToTemp(m_meldaFIR[m_pParams->RTPC.ifirSelect - 1]);
+        m_filterExRunning = true;
     }
+#endif
 #if LIVE
 
     //Unit Test and assertions

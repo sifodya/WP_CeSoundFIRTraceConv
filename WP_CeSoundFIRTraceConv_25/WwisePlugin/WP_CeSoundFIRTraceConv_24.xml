@@ -275,7 +275,17 @@ for the documentation about the plugin xml format
 				  <ValueRestriction>
 					  <Enumeration Type="int32">
 						  <Value DisplayName ="Tracing">0</Value>
-						  <Value DisplayName ="FIR 1">1</Value>
+						  <Value DisplayName ="Kirche">1</Value>
+						  <Value DisplayName ="Kirche Eingang">2</Value>
+						  <Value DisplayName ="Aussen">3</Value>
+						  <Value DisplayName ="Treppe">4</Value>
+						  <Value DisplayName ="Hauskanal">5</Value>
+						  <Value DisplayName ="Kreuzung">6</Value>
+						  <Value DisplayName ="Grosser Eingang Werk">7</Value>
+						  <Value DisplayName ="Werk">8</Value>
+						  <Value DisplayName ="Werk Unterholz">9</Value>
+						  <Value DisplayName ="Werk Eingang klein">10</Value>
+						  <Value DisplayName ="Aussen">11</Value>
 					  </Enumeration>
 				  </ValueRestriction>
 			  </Restrictions>
